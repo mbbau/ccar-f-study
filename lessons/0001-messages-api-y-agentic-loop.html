@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>0001 · Messages API y agentic loop</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head><body><main>
+
+<header class="lesson">
+  <div class="kicker">Día 01 · Lun 28/9 · Issue #1 · Guía: task statement 1.1</div>
+  <h1>Messages API y agentic loop</h1>
+  <p class="subtitle">Qué mandás, qué recibís, y cómo sabe tu código si Claude terminó o te pide ejecutar algo.</p>
+  <p class="meta">≈ 40 min de estudio + 30 min de lab · Fuentes primarias: <a href="https://platform.claude.com/docs/en/build-with-claude/working-with-messages">Working with the Messages API</a> · <a href="https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons">Handling stop reasons</a></p>
+</header>
+
+<div class="callout win"><span class="label">El logro de hoy</span>
+<p>Un loop en Python que pasa los 6 escenarios de <code>labs/01-agentic-loop/check.py</code>.</p></div>
+
+<div class="callout"><span class="label">Por qué entra en el examen</span>
+<p>Task statement <strong>1.1</strong> de la <a href="https://everpath-course-content.s3-accelerate.amazonaws.com/instructor/6nizmqk8tpzpfjvt6qmmav7rh/public/1783542750/Claude+Certified+Architect+%E2%80%93+Foundations+Exam+Guide.pdf">guía oficial</a>: <em>“inspecting stop_reason (“tool_use” vs “end_turn”), executing requested tools, and returning results for the next iteration”</em>. Anti-patrones que marca: cortar el loop parseando lenguaje natural, usar un tope de iteraciones como mecanismo <em>principal</em>, o tomar el texto del assistant como señal de que terminó.</p></div>
+
+<!-- ===================== PARTE 1: FUNDAMENTOS ===================== -->
+<h2>1 · Qué mandás: el request</h2>
+<pre><code>client.messages.create(
+    model="claude-opus-5-5",
+    max_tokens=1024,                     # tope de tokens de la RESPUESTA
+    system="Sos un analista de datos.",  # instrucciones generales
+    messages=[{"role": "user", "content": "¿Qué planta despachó más m3?"}],
+    tools=[...],                         # tools que Claude puede pedir (sección 4)
+)</code></pre>
+<ul class="tight">
+<li><code>system</code> es un <strong>parámetro aparte</strong>, no un mensaje dentro de <code>messages</code> (<a href="https://platform.claude.com/docs/en/build-with-claude/working-with-messages">docs</a>). En OpenAI va como un mensaje más; acá no.</li>
+<li>En <code>messages</code> los roles son <code>user</code> y <code>assistant</code>, alternados. No existe un role <code>tool</code>.</li>
+</ul>
+
+<h2>2 · La API no se acuerda de nada</h2>
+<p><em>“The Messages API is stateless, which means that you always send the full conversational history to the API”</em> (<a href="https://platform.claude.com/docs/en/build-with-claude/working-with-messages">docs</a>). No hay sesión: <strong>la memoria es la lista <code>messages</code> que armás vos</strong> y reenviás completa en cada llamada.</p>
+<pre><code>messages.append({"role": "assistant", "content": r1.content})   # lo que respondió Claude
+messages.append({"role": "user", "content": "¿Y cuánto facturó?"})
+r2 = client.messages.create(model=M, max_tokens=1024, messages=messages)  # va TODO</code></pre>
+<p class="sidenote">Por eso <code>usage.input_tokens</code> crece turno a turno. Vuelve en el Día 05 (contexto) y el Día 06 (subagentes con contexto aislado).</p>
+
+<h2>3 · Qué recibís: la response</h2>
+<pre><code>{
+  "id": "msg_01...",
+  "role": "assistant",
+  "content": [
+    {"type": "text", "text": "Voy a consultar el DWH."},
+    {"type": "tool_use", "id": "toolu_01", "name": "query_dwh",
+     "input": {"sql": "SELECT planta, SUM(m3) FROM despachos GROUP BY planta"}}
+  ],
+  "stop_reason": "tool_use",
+  "usage": {"input_tokens": 412, "output_tokens": 58}
+}</code></pre>
+<ul class="tight">
+<li><code>content</code> es una <strong>lista de bloques tipados</strong> (<code>text</code>, <code>tool_use</code>…), no un string ni <code>choices</code>. Una respuesta puede traer texto <em>y</em> un pedido de tool.</li>
+<li>Texto: <code>"".join(b.text for b in r.content if b.type == "text")</code>.</li>
+<li><code>stop_reason</code> dice <strong>por qué</strong> se detuvo la generación. Es lo que usa tu código para decidir el paso siguiente.</li>
+</ul>
+
+<!-- ===================== PARTE 2: EL LOOP ===================== -->
+<h2>4 · El agentic loop</h2>
+<p>Claude no ejecuta tus tools: te <strong>pide</strong> que lo hagas y se detiene con <code>stop_reason: "tool_use"</code>. Tu código ejecuta, devuelve el resultado y vuelve a llamar, con todo el historial.</p>
+<div class="flow">
+  <span class="node">messages.create()</span><span class="arrow">→</span>
+  <span class="node hot">¿stop_reason?</span><span class="arrow">→</span>
+  <span class="node"><code>tool_use</code>: ejecutar + <code>tool_result</code></span><span class="arrow">↺</span>
+  <span class="node"><code>end_turn</code>: fin</span>
+</div>
+<pre><code>while True:
+    response = client.messages.create(model=..., tools=tools, messages=messages)
+    if response.stop_reason == "tool_use":
+        messages.append({"role": "assistant", "content": response.content})
+        messages.append({"role": "user", "content": execute_tools(response.content)})
+    else:
+        return response</code></pre>
+<p class="sidenote">Patrón de la <a href="https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons">doc oficial</a>. En el lab le agregás un tope de iteraciones como red de seguridad.</p>
+
+<h3>Valores de stop_reason</h3>
+<div class="table-wrap"><table>
+<tr><th>Valor</th><th>Qué significa</th><th>Qué hace tu código</th></tr>
+<tr><td><code>end_turn</code></td><td>Terminó de forma natural.</td><td>Usar la respuesta.</td></tr>
+<tr><td><code>tool_use</code></td><td>Pide ejecutar una o más tools <em>client</em>.</td><td>Ejecutar, devolver <code>tool_result</code>, seguir.</td></tr>
+<tr><td><code>max_tokens</code></td><td>Llegó al tope de <code>max_tokens</code>.</td><td>Subir el límite o continuar. Un <code>tool_use</code> cortado no se ejecuta: reintentar con más tokens.</td></tr>
+<tr><td><code>pause_turn</code></td><td>Un loop de <em>server tools</em> (p. ej. web search) llegó a su tope.</td><td>Reenviar el contenido assistant para que continúe.</td></tr>
+<tr><td><code>stop_sequence</code></td><td>Emitió una de tus <code>stop_sequences</code>.</td><td>Leer <code>stop_sequence</code>.</td></tr>
+<tr><td><code>refusal</code></td><td>Declinó responder.</td><td>Leer <code>stop_details</code>; fallback.</td></tr>
+<tr><td><code>model_context_window_exceeded</code></td><td>Se llenó la ventana de contexto.</td><td>Tratar como truncado.</td></tr>
+</table></div>
+<p class="sidenote"><code>stop_reason</code> llega en respuestas HTTP 200 normales; los errores de la API son 4xx/5xx.</p>
+
+<h2>5 · Reglas del tool_result</h2>
+<ol class="steps">
+<li><code>tool_use_id</code> = <code>id</code> del bloque <code>tool_use</code> que responde.</li>
+<li>Va en un mensaje <code>user</code> <strong>inmediatamente</strong> después del assistant con el <code>tool_use</code>.</li>
+<li>Tools en paralelo → <strong>todos</strong> los resultados en <strong>un solo</strong> mensaje user.</li>
+<li>Los <code>tool_result</code> van primero en el <code>content</code>; texto adicional, después.</li>
+<li>Si la tool falla: <code>"is_error": true</code> con un mensaje instructivo, para que Claude se corrija.</li>
+</ol>
+<p class="sidenote">Fuente: <a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls">Handle tool calls</a>.</p>
+<pre><code>{"role": "user", "content": [
+    {"type": "tool_result", "tool_use_id": "toolu_01", "content": "planta | m3\nCórdoba Norte | 99"}
+]}</code></pre>
+
+<div class="callout trap"><span class="label">Trampa típica</span>
+<p>Cortar el loop porque el texto dice “Listo”. Si <code>stop_reason == "tool_use"</code>, el turno no terminó, diga lo que diga el texto.</p></div>
+
+<h2>6 · Práctica de recuperación</h2>
+<div class="recall" data-prompt="Sin mirar: escribí los 7 valores de stop_reason y qué hace tu código con cada uno."
+     data-terms="end_turn,tool_use,max_tokens,pause_turn,stop_sequence,refusal,model_context_window_exceeded"></div>
+
+<h2>7 · Quiz</h2>
+<div class="quiz" data-src="quiz-0001"></div>
+<script type="application/json" id="quiz-0001">[
+{"q":"Querés que Claude responda siempre como analista de datos. ¿Dónde va esa instrucción?",
+ "options":["Parámetro system de primer nivel","Mensaje con role system inicial","Texto al inicio del user","Header HTTP del request actual"],"answer":0,
+ "why":"El system prompt es un parámetro aparte del request, no un elemento de <code>messages</code>."},
+{"q":"Segundo turno de una conversación. ¿Qué mandás en <code>messages</code>?",
+ "options":["Todo el historial más la pregunta","Solo la pregunta nueva del usuario","La pregunta nueva más el msg_id","El último par user y assistant"],"answer":0,
+ "why":"La API es stateless: cada request lleva la conversación completa."},
+{"q":"La respuesta trae el texto “Listo, ya consulté la tabla” y <code>stop_reason: \"tool_use\"</code>. ¿Qué hace tu loop?",
+ "options":["Ejecutar la tool y seguir iterando","Cortar, porque el texto dice listo","Reenviar el mismo request sin cambios","Pedirle al usuario que lo confirme"],"answer":0,
+ "why":"El control de flujo depende de <code>stop_reason</code>, no del texto."},
+{"q":"El <code>tool_use_id</code> de un <code>tool_result</code> debe coincidir con…",
+ "options":["El id del bloque tool_use","El name del bloque tool_use","El id del mensaje assistant","El número de turno actual"],"answer":0,
+ "why":"Cada bloque <code>tool_use</code> tiene su propio <code>id</code> (<code>toolu_…</code>)."},
+{"q":"Claude pidió 3 tools en paralelo. ¿Cómo devolvés los resultados?",
+ "options":["Un mensaje user con tres tool_result","Tres mensajes user, uno por resultado","Un mensaje assistant con los resultados","Solo el tool_result del último bloque"],"answer":0,
+ "why":"Todos los resultados van en un único mensaje user, inmediatamente después del assistant."},
+{"q":"Llega <code>stop_reason: \"max_tokens\"</code> y el último bloque es un <code>tool_use</code>. ¿Qué hacés?",
+ "options":["Reintentar el request con más max_tokens","Ejecutar el tool_use con input parcial","Tratarlo como end_turn y responder ya","Agregar un texto después del tool_result"],"answer":0,
+ "why":"El <code>tool_use</code> puede estar cortado. La doc recomienda reintentar con un <code>max_tokens</code> mayor."},
+{"q":"<code>query_dwh</code> lanza una excepción por SQL inválido. ¿Qué hace tu loop?",
+ "options":["Devolver el error con is_error true","Lanzar la excepción y cortar todo","Mandar un tool_result con content vacío","Omitir ese tool_result y seguir igual"],"answer":0,
+ "why":"Con <code>is_error: true</code> y un mensaje claro, Claude puede corregir el SQL y reintentar."}
+]</script>
+
+<h2>8 · Lab (30 min)</h2>
+<p>En <a href="../labs/01-agentic-loop/README.md"><code>labs/01-agentic-loop/</code></a>: completá los dos <code>TODO</code> de <code>loop.py</code> y corré <code>python check.py</code> hasta ver <strong>6/6</strong>. No hace falta API key. Al terminar: <code>git commit -m "lab 01 agentic loop, closes #1"</code>.</p>
+
+<h2>9 · Cierre (10 min)</h2>
+<ul class="tight">
+<li>3 preguntas tipo examen en <code>notes/</code> (mañana las respondés sin mirar).</li>
+<li>Las que fallaste del quiz, a <code>errores.md</code>.</li>
+</ul>
+
+<div class="callout"><span class="label">Preguntá</span>
+<p>Si algo no cierra, preguntale a tu agente: es tu profe.</p></div>
+
+<footer class="lesson"><nav>
+<a href="../reference/messages-api.html">Referencia: Messages API</a>
+<a href="../reference/agentic-loop.html">Referencia: agentic loop</a>
+<a href="../reference/glosario.html">Glosario</a>
+</nav></footer>
+</main>
+<script src="../assets/quiz.js"></script>
+</body></html>

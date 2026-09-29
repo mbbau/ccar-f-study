@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Referencia · Messages API</title><link rel="stylesheet" href="../assets/style.css"></head>
+<body><main>
+<header class="lesson"><div class="kicker">Referencia · Fundamentos</div><h1>Messages API</h1>
+<p class="subtitle">Ficha rápida. Lección: <a href="../lessons/0001-messages-api-y-agentic-loop.html">0001</a>.</p></header>
+
+<h2>Request</h2>
+<div class="table-wrap"><table>
+<tr><th>Campo</th><th>Qué es</th></tr>
+<tr><td><code>model</code></td><td>Modelo a usar.</td></tr>
+<tr><td><code>max_tokens</code></td><td>Tope de tokens de la <em>respuesta</em>. Si se alcanza → <code>stop_reason: max_tokens</code>.</td></tr>
+<tr><td><code>system</code></td><td>Instrucciones generales. Parámetro de primer nivel, no un mensaje.</td></tr>
+<tr><td><code>messages</code></td><td>Historial completo; roles <code>user</code> / <code>assistant</code> alternados.</td></tr>
+<tr><td><code>tools</code></td><td>Definiciones de tools (<code>name</code>, <code>description</code>, <code>input_schema</code>).</td></tr>
+</table></div>
+
+<h2>Response</h2>
+<div class="table-wrap"><table>
+<tr><th>Campo</th><th>Qué es</th></tr>
+<tr><td><code>id</code>, <code>type</code>, <code>role</code></td><td><code>msg_…</code>, <code>"message"</code>, <code>"assistant"</code>.</td></tr>
+<tr><td><code>content</code></td><td><strong>Lista de bloques tipados</strong> (<code>text</code>, <code>tool_use</code>, …). No hay <code>choices</code>.</td></tr>
+<tr><td><code>model</code></td><td>Modelo que respondió.</td></tr>
+<tr><td><code>stop_reason</code></td><td>Por qué se detuvo. Gobierna el loop (ver <a href="agentic-loop.html">agentic loop</a>).</td></tr>
+<tr><td><code>stop_sequence</code></td><td>Qué stop sequence se disparó, si aplica.</td></tr>
+<tr><td><code>usage</code></td><td><code>input_tokens</code>, <code>output_tokens</code>.</td></tr>
+</table></div>
+
+<h2>Reglas</h2>
+<ul class="tight">
+<li><strong>Stateless:</strong> cada request lleva toda la conversación. <code>input_tokens</code> crece turno a turno.</li>
+<li>Texto: <code>"".join(b.text for b in r.content if b.type == "text")</code>.</li>
+<li><code>tool_result</code> viaja con role <code>user</code> (no existe role <code>tool</code>).</li>
+</ul>
+<p class="sidenote">Fuente: <a href="https://platform.claude.com/docs/en/build-with-claude/working-with-messages">Working with the Messages API</a></p>
+</main></body></html>

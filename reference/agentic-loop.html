@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Referencia · Agentic loop</title><link rel="stylesheet" href="../assets/style.css"></head>
+<body><main>
+<header class="lesson"><div class="kicker">Referencia · D1</div><h1>Agentic loop</h1>
+<p class="subtitle">Ficha rápida. Lección: <a href="../lessons/0001-messages-api-y-agentic-loop.html">0001</a>.</p></header>
+
+<h2>Loop mínimo</h2>
+<pre><code>messages = [{"role": "user", "content": question}]
+for _ in range(MAX_ITERATIONS):                      # guardrail
+    r = client.messages.create(model=M, max_tokens=1024, tools=TOOLS, messages=messages)
+    if r.stop_reason == "tool_use":
+        messages.append({"role": "assistant", "content": r.content})
+        messages.append({"role": "user", "content": [
+            run_tool(b) for b in r.content if b.type == "tool_use"   # todos en UN mensaje
+        ]})
+        continue
+    return r                                          # end_turn / max_tokens / otros</code></pre>
+
+<h2>stop_reason → acción</h2>
+<div class="table-wrap"><table>
+<tr><th>Valor</th><th>Acción</th></tr>
+<tr><td><code>end_turn</code></td><td>Usar la respuesta.</td></tr>
+<tr><td><code>tool_use</code></td><td>Ejecutar client tools → <code>tool_result</code> → seguir.</td></tr>
+<tr><td><code>max_tokens</code></td><td>Subir límite / continuar. <code>tool_use</code> cortado → reintentar con más tokens.</td></tr>
+<tr><td><code>pause_turn</code></td><td>Server tools pausadas → reenviar contenido assistant.</td></tr>
+<tr><td><code>stop_sequence</code></td><td>Leer <code>response.stop_sequence</code>.</td></tr>
+<tr><td><code>refusal</code></td><td>Leer <code>stop_details</code>; fallback.</td></tr>
+<tr><td><code>model_context_window_exceeded</code></td><td>Tratar como truncado.</td></tr>
+</table></div>
+
+<h2>Reglas de tool_result</h2>
+<ul class="tight">
+<li><code>tool_use_id</code> = <code>id</code> del bloque <code>tool_use</code>.</li>
+<li>Mensaje <code>user</code> inmediatamente después del assistant. Nada en el medio.</li>
+<li>Paralelo → todos los resultados en un solo mensaje.</li>
+<li><code>tool_result</code> primero; texto adicional, después.</li>
+<li>Error → <code>"is_error": true</code> + mensaje instructivo.</li>
+<li>Streaming: <code>stop_reason</code> llega en el evento <code>message_delta</code> (es <code>null</code> en <code>message_start</code>).</li>
+</ul>
+
+<h2>Trampas</h2>
+<ul class="tight">
+<li>Cortar por el texto (“listo”) en vez de por <code>stop_reason</code>.</li>
+<li>Confundir <code>stop_reason</code> (HTTP 200) con errores de API (4xx/5xx).</li>
+<li>Olvidar el tope de iteraciones.</li>
+</ul>
+<p class="sidenote">Fuentes: <a href="https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons">Handling stop reasons</a> · <a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls">Handle tool calls</a></p>
+</main></body></html>

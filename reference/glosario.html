@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Glosario CCAR-F</title><link rel="stylesheet" href="../assets/style.css"></head>
+<body><main>
+<header class="lesson"><div class="kicker">Referencia</div><h1>Glosario</h1>
+<p class="subtitle">Términos en inglés, como aparecen en el examen. Se amplía en cada lección.</p></header>
+<div class="table-wrap"><table>
+<tr><th>Término</th><th>Definición</th><th>Lección</th></tr>
+<tr><td>Messages API</td><td>Endpoint principal para conversar con Claude: recibe <code>system</code>, <code>messages</code> y <code>tools</code>; devuelve un mensaje assistant.</td><td><a href="../lessons/0001-messages-api-y-agentic-loop.html">0001</a></td></tr>
+<tr><td>stateless</td><td>La API no guarda la conversación: cada request lleva el historial completo.</td><td>0001</td></tr>
+<tr><td>system (parámetro)</td><td>Instrucciones generales; parámetro de primer nivel, no un mensaje de <code>messages</code>.</td><td>0001</td></tr>
+<tr><td>content block</td><td>Unidad de <code>content</code>, con un <code>type</code> (<code>text</code>, <code>tool_use</code>, <code>tool_result</code>…).</td><td>0001</td></tr>
+<tr><td>usage</td><td>Conteo de <code>input_tokens</code> y <code>output_tokens</code> de la llamada.</td><td>0001</td></tr>
+<tr><td>agentic loop</td><td>Ciclo request → respuesta → ejecutar tools → devolver resultados, hasta que el modelo termina.</td><td><a href="../lessons/0001-messages-api-y-agentic-loop.html">0001</a></td></tr>
+<tr><td>stop_reason</td><td>Campo de la respuesta que indica por qué se detuvo la generación. Gobierna el control de flujo del loop.</td><td>0001</td></tr>
+<tr><td>tool_use (bloque)</td><td>Bloque de contenido con <code>id</code>, <code>name</code> e <code>input</code>: el pedido de Claude para ejecutar una tool.</td><td>0001</td></tr>
+<tr><td>tool_result</td><td>Bloque que devolvés en un mensaje user con el resultado; referencia el <code>tool_use_id</code>.</td><td>0001</td></tr>
+<tr><td>is_error</td><td>Flag del <code>tool_result</code> para indicar que la ejecución falló.</td><td>0001</td></tr>
+<tr><td>client tool</td><td>Tool definida y ejecutada por tu aplicación.</td><td>0001</td></tr>
+<tr><td>server tool</td><td>Tool ejecutada por Anthropic (p. ej. web search); puede producir <code>pause_turn</code>.</td><td>0001</td></tr>
+<tr><td>parallel tool use</td><td>Varios bloques <code>tool_use</code> en una misma respuesta.</td><td>0001</td></tr>
+</table></div>
+</main></body></html>

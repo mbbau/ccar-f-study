@@ -1,0 +1,59 @@
+/* CCAR-F · hoja de estilos compartida por lecciones y referencias */
+:root{
+  --bg:#fffff8; --fg:#1d1d1b; --muted:#6b6b66; --rule:#dcdcd2;
+  --accent:#8a3ffc; --accent-soft:#f1e9ff; --ok:#1b7f4c; --ok-soft:#e5f5ec;
+  --bad:#b3261e; --bad-soft:#fbe9e7; --code-bg:#f3f2ea;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:"Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif;
+  --mono:"Cascadia Code",Consolas,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --bg:#151513; --fg:#e8e6df; --muted:#9a988f; --rule:#34332e;
+  --accent:#b98cff; --accent-soft:#2a2138; --ok:#5fcf93; --ok-soft:#16291f;
+  --bad:#ff8a80; --bad-soft:#3a1d1a; --code-bg:#22221f;}}
+*{box-sizing:border-box}
+html{font-size:18px}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--serif);line-height:1.6}
+main{max-width:720px;margin:0 auto;padding:48px 20px 96px}
+header.lesson{border-bottom:1px solid var(--rule);margin-bottom:32px;padding-bottom:16px}
+.kicker{font-family:var(--sans);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:600}
+h1{font-weight:400;font-size:2.1rem;line-height:1.2;margin:.3em 0 .2em}
+h2{font-weight:400;font-size:1.4rem;margin:2.2em 0 .5em;border-bottom:1px solid var(--rule);padding-bottom:.2em}
+h3{font-family:var(--sans);font-size:.95rem;margin:1.6em 0 .4em}
+.subtitle{color:var(--muted);font-style:italic;margin:0}
+.meta{font-family:var(--sans);font-size:.78rem;color:var(--muted);margin-top:12px}
+a{color:var(--accent)}
+code,pre{font-family:var(--mono);font-size:.8rem}
+code{background:var(--code-bg);padding:.08em .35em;border-radius:3px}
+pre{background:var(--code-bg);padding:14px 16px;border-radius:6px;overflow-x:auto;line-height:1.45}
+pre code{background:none;padding:0}
+.callout{border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;margin:20px 0;border-radius:0 6px 6px 0}
+.callout.trap{border-color:var(--bad);background:var(--bad-soft)}
+.callout.win{border-color:var(--ok);background:var(--ok-soft)}
+.callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}
+.callout .label{font-family:var(--sans);font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:4px}
+table{border-collapse:collapse;width:100%;font-size:.86rem;margin:16px 0}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-family:var(--sans);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+.sidenote{font-size:.8rem;color:var(--muted)}
+ol.steps li,ul.tight li{margin:.3em 0}
+footer.lesson{margin-top:56px;border-top:1px solid var(--rule);padding-top:16px;font-family:var(--sans);font-size:.8rem;color:var(--muted)}
+footer.lesson nav a{margin-right:14px}
+button{font-family:var(--sans);font-size:.85rem;cursor:pointer;border:1px solid var(--rule);background:var(--bg);color:var(--fg);padding:8px 14px;border-radius:6px}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+textarea{width:100%;min-height:110px;font-family:var(--mono);font-size:.8rem;padding:10px;border:1px solid var(--rule);border-radius:6px;background:var(--bg);color:var(--fg)}
+/* diagrama del loop */
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:var(--sans);font-size:.78rem;margin:18px 0}
+.flow .node{border:1px solid var(--rule);border-radius:6px;padding:6px 10px;background:var(--code-bg)}
+.flow .node.hot{border-color:var(--accent);background:var(--accent-soft)}
+.flow .arrow{color:var(--muted)}
+@media print{
+  :root{--bg:#fff;--fg:#000}
+  main{max-width:none;padding:0}
+  .quiz button,.recall button{display:none}
+  a{color:#000;text-decoration:none}
+  pre{white-space:pre-wrap}
+}
+@media (max-width:600px){html{font-size:16px}h1{font-size:1.7rem}}

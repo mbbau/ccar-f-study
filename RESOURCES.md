@@ -6,6 +6,9 @@ Fuentes oficiales y verificables para preparar la certificación Claude Certifie
 
 ### Guía del examen y preparación
 
+- [Claude Certified Architect – Foundations Exam Guide (PDF oficial, v1.0, jul-2026)](https://everpath-course-content.s3-accelerate.amazonaws.com/instructor/6nizmqk8tpzpfjvt6qmmav7rh/public/1783542750/Claude+Certified+Architect+%E2%80%93+Foundations+Exam+Guide.pdf)
+  Blueprint oficial: 5 dominios con sus *task statements* (Knowledge of / Skills in), 6 escenarios, formato (60 ítems, 120 min, corte 720) y 12 preguntas de ejemplo. **La fuente que define qué entra en el examen.**
+
 - [Anthropic Partner Academy (Skilljar)](https://anthropic.skilljar.com)
   Portal oficial con cursos preparatorios para las certificaciones Anthropic. Use for: prerequisitos del examen, cursos oficiales.
 
@@ -17,6 +20,10 @@ Fuentes oficiales y verificables para preparar la certificación Claude Certifie
   Referencia de la API de tool use: definición de herramientas con `input_schema`, manejo de `tool_use` / `tool_result`, y el agentic loop (while + stop_reason). Use for: implementar el loop agéntico.
 - [Docs: Tool Use Overview (build-with-claude)](https://docs.anthropic.com/en/docs/build-with-claude/tool-use/overview)
   Documentación complementaria de tool use desde la perspectiva de building con Claude. Use for: ejemplos prácticos y best practices.
+- [Docs: Handling stop reasons](https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons)
+  Todos los valores de `stop_reason`, cómo manejar cada uno y trampas (respuestas vacías, `tool_use` truncado, `pause_turn`). **Fuente primaria del Día 01.**
+- [Docs: Handle tool calls](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls)
+  Formato de `tool_result`, reglas de orden, parallel tool use e `is_error`. Use for: lab del agentic loop.
 - [Anthropic Cookbook (GitHub)](https://github.com/anthropics/anthropic-cookbook)
   Notebooks con ejemplos oficiales: agentes, tool use, sub-agents, RAG, multi-model. Use for: labs prácticos y patrones de referencia.
 
@@ -48,7 +55,8 @@ Fuentes oficiales y verificables para preparar la certificación Claude Certifie
 
 ## Gaps
 
-- **Guía oficial del examen CCAR-F (PDF/blueprint):** No pude encontrar un PDF público con el blueprint detallado del examen. El contenido está dentro de Anthropic Partner Academy (requiere login con email de partner). Si tenés acceso, descargá el blueprint y agregalo acá.
+- **Dominio de la doc:** la documentación se mudó de `docs.anthropic.com` / `docs.claude.com` a `platform.claude.com/docs` (los links viejos redirigen).
+
 - **Structured outputs docs:** La URL específica de structured outputs con JSON schema no resolvió en la estructura actual de docs.anthropic.com. Los conceptos están cubiertos en la doc de tool use (el campo `input_schema`). Si Anthropic publica una página dedicada, agregarla acá.
 - **Claude Code sub-pages:** Las páginas individuales de Claude Code (CLAUDE.md, skills, headless mode, sub-agents) están integradas dentro de la overview page en lugar de URLs separadas. Todo el contenido está en el link de overview de D2.
 
