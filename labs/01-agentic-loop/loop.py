@@ -39,6 +39,21 @@ def run_tool(block) -> dict:
       - Si la tool lanza una excepción, NO cortes el loop: devolvé el mensaje de error
         con "is_error": True para que Claude pueda corregirse.
     """
+    if block.name == "query_dwh":
+        try:
+            result = query_dwh(block.input["sql"])
+            return {
+                "type": "tool_result",
+                "tool_use_id": block.tool_use_id,
+                "content": {"result": result, "is_error": False},
+            }
+        except Exception as e:
+            return {
+                "type": "tool_result",
+                "tool_use_id": block.tool_use_id,
+                "content": {"result": str(e), "is_error": True},
+            }
+
     raise NotImplementedError("TODO 1")
 
 
@@ -58,7 +73,25 @@ def run_agent(client, question: str, max_iterations: int = 10) -> str:
          si se alcanza, devolvé un aviso (no lances excepción).
     """
     messages = [{"role": "user", "content": question}]
-    raise NotImplementedError("TODO 2")
+    iteration = 0
+    while iteration < max_iterations:
+        response = client.messages.create(model=MODEL, max_tokens=1024, tools=TOOLS, messages=messages)
+        print(response.stop_reason)
+        if response.stop_reason == "tool_use":
+            messages.append({"role": "assistant", "content": response.content})
+            results = [run_tool(b) for b in response.content if b.type == "tool_use"]
+            messages.append({"role": "user", "content": results})
+        elif response.stop_reason == "end_turn":
+            return final_text(response)
+        elif response.stop_reason == "max_tokens":
+            return final_text(response) + "\n\n[AVISO: Respuesta truncada por límite de tokens.]"
+        else:
+            return final_text(response) + f"\n\n[AVISO: Detenido por stop_reason={response.stop_reason}]"
+        iteration += 1
+        messages.append({"role": "user", "content": {"type": "text", "text": "Continuá, por favor."}})
+##    raise NotImplementedError("TODO 2")
+    return "[AVISO: Se alcanzó el máximo de iteraciones sin obtener una respuesta final.]"
+    
 
 
 def final_text(response) -> str:
