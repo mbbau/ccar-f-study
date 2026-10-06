@@ -19,5 +19,9 @@
 <tr><td>client tool</td><td>Tool definida y ejecutada por tu aplicación.</td><td>0001</td></tr>
 <tr><td>server tool</td><td>Tool ejecutada por Anthropic (p. ej. web search); puede producir <code>pause_turn</code>.</td><td>0001</td></tr>
 <tr><td>parallel tool use</td><td>Varios bloques <code>tool_use</code> en una misma respuesta.</td><td>0001</td></tr>
+<tr><td>tool description</td><td>Texto que explica qué hace una tool, cuándo usarla y sus límites. Principal mecanismo de selección del modelo.</td><td><a href="../lessons/0002-diseno-de-tools.html">0002</a></td></tr>
+<tr><td>tool_choice</td><td>Parámetro que controla el uso de tools: <code>auto</code>, <code>any</code>, <code>tool</code> (una específica), <code>none</code>.</td><td>0002</td></tr>
+<tr><td>namespacing</td><td>Prefijos por servicio en los nombres de tools (<code>dwh_…</code>, <code>jira_…</code>) para evitar ambigüedad.</td><td>0002</td></tr>
+<tr><td>retryable error</td><td>Error que puede resolverse reintentando lo mismo (transitorio). Validación, negocio y permiso no lo son.</td><td>0002</td></tr>
 </table></div>
 </main></body></html>

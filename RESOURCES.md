@@ -27,6 +27,13 @@ Fuentes oficiales y verificables para preparar la certificación Claude Certifie
 - [Anthropic Cookbook (GitHub)](https://github.com/anthropics/anthropic-cookbook)
   Notebooks con ejemplos oficiales: agentes, tool use, sub-agents, RAG, multi-model. Use for: labs prácticos y patrones de referencia.
 
+### D2 (guía) · Diseño de tools
+
+- [Docs: Define tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools)
+  Best practices de descriptions (3–4 oraciones, qué/cuándo/límites), namespacing, `input_examples` y `tool_choice`. **Fuente primaria del Día 02.**
+- [Anthropic Engineering: Writing effective tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents)
+  Principios: no envolver cada endpoint, consolidar, contexto significativo, eficiencia de tokens, errores accionables.
+
 ### D2 · Claude Code: configuración y workflows (20%)
 
 - [Claude Code Docs: Overview](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview)

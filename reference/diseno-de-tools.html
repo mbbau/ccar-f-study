@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Referencia · Diseño de tools</title><link rel="stylesheet" href="../assets/style.css"></head>
+<body><main>
+<header class="lesson"><div class="kicker">Referencia · D2</div><h1>Diseño de tools</h1>
+<p class="subtitle">Ficha rápida. Lección: <a href="../lessons/0002-diseno-de-tools.html">0002</a>.</p></header>
+
+<h2>Checklist de una description</h2>
+<ul class="tight">
+<li>Qué hace · cuándo usarla · cuándo <strong>no</strong> · qué devuelve · límites.</li>
+<li>3–4 oraciones como mínimo. Cada parámetro con su propia <code>description</code> y un ejemplo.</li>
+<li>Sin superposición con otras tools; prefijo por servicio (<code>dwh_</code>).</li>
+</ul>
+
+<h2>tool_choice</h2>
+<div class="table-wrap"><table>
+<tr><th>Valor</th><th>Efecto</th></tr>
+<tr><td><code>auto</code></td><td>Claude decide (default).</td></tr>
+<tr><td><code>any</code></td><td>Obliga a usar alguna tool.</td></tr>
+<tr><td><code>tool</code> + <code>name</code></td><td>Obliga a usar esa tool.</td></tr>
+<tr><td><code>none</code></td><td>Prohíbe tools.</td></tr>
+</table></div>
+
+<h2>Errores</h2>
+<div class="table-wrap"><table>
+<tr><th>Categoría</th><th>Reintentable</th></tr>
+<tr><td>Transitorio (timeout)</td><td>Sí</td></tr>
+<tr><td>Validación (input mal)</td><td>No: corregir input</td></tr>
+<tr><td>Negocio (regla)</td><td>No</td></tr>
+<tr><td>Permiso (sin acceso)</td><td>No</td></tr>
+</table></div>
+<ul class="tight">
+<li>0 filas = resultado normal, <strong>no</strong> error.</li>
+<li>Mensaje accionable: qué pasó + qué hacer.</li>
+<li>Demasiadas tools por agente degradan la selección.</li>
+</ul>
+<p class="sidenote">Fuentes: <a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools">Define tools</a> · <a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Writing effective tools for agents</a> · Guía oficial 2.1–2.3.</p>
+</main></body></html>

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>0002 · Diseño de tools</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head><body><main>
+
+<header class="lesson">
+  <div class="kicker">Día 02 · Mar 29/9 · Issue #3 · Guía: task statements 2.1, 2.2, 2.3</div>
+  <h1>Diseño de tools</h1>
+  <p class="subtitle">Claude no ve tu código: elige una tool leyendo su nombre y su description. Diseñar tools es escribir para ese lector.</p>
+  <p class="meta">Antes: <a href="0001-messages-api-y-agentic-loop.html">0001</a> · ≈ 40 min de estudio + 30 min de lab · Fuentes primarias: <a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools">Define tools</a> · <a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Writing effective tools for agents</a></p>
+</header>
+
+<h2>0 · Repaso del Día 01 (10 min)</h2>
+<p class="sidenote">Sin mirar la lección de ayer. Recordar con esfuerzo es lo que fija.</p>
+<div class="quiz" data-src="repaso-0001"></div>
+<script type="application/json" id="repaso-0001">[
+{"q":"¿Qué campo de la response decide si tu loop sigue o termina?",
+ "options":["El valor de stop_reason","El texto del assistant","El valor de usage","El id del mensaje"],"answer":0,
+ "why":"<code>stop_reason</code>: con <code>tool_use</code> seguís, con <code>end_turn</code> terminás."},
+{"q":"En el turno 3 de una conversación, ¿qué llevás en <code>messages</code>?",
+ "options":["Todo el historial desde el inicio","Solo los dos últimos mensajes enviados","Solo la pregunta del turno actual","El id de la conversación previa"],"answer":0,
+ "why":"La API es stateless: la memoria es la lista que armás vos."},
+{"q":"¿De dónde sale el <code>tool_use_id</code> que ponés en el <code>tool_result</code>?",
+ "options":["Del id del bloque tool_use","Del name del bloque tool_use","Del id de la response","De un contador que armás"],"answer":0,
+ "why":"Es el bug que arreglaste en el Lab 01: <code>block.id</code>."}
+]</script>
+
+<div class="callout win"><span class="label">El logro de hoy</span>
+<p>Poder mirar la definición de una tool y decir si Claude la va a elegir bien, y por qué. En el lab: 17/17 en <code>labs/02-tool-design/check.py</code>.</p></div>
+
+<h2>1 · Cómo elige Claude una tool</h2>
+<p>En cada request le mandás la lista <code>tools</code>. Para decidir si llamar a una y a cuál, Claude solo tiene tres cosas: <code>name</code>, <code>description</code> e <code>input_schema</code>. No ve tu código ni tu base de datos.</p>
+<div class="callout"><span class="label">La idea central del día</span>
+<p>La doc: <em>“Provide extremely detailed descriptions. This is by far the most important factor in tool performance”</em> (<a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools">docs</a>). La guía del examen lo dice así: las descriptions son el <strong>principal mecanismo de selección</strong> del modelo (task statement 2.1).</p></div>
+<p>Pensalo como el diccionario de datos de un modelo semántico: si una medida se llama <code>Total</code> y no tiene descripción, cualquiera que llegue nuevo la va a usar mal. Con las tools, ese “alguien nuevo” es Claude en cada llamada.</p>
+
+<h2>2 · Anatomía de una buena description</h2>
+<p>La doc pide al menos 3–4 oraciones que cubran:</p>
+<ol class="steps">
+<li><strong>Qué hace.</strong></li>
+<li><strong>Cuándo usarla, y cuándo no.</strong></li>
+<li><strong>Qué significa cada parámetro</strong> (va en la <code>description</code> de cada propiedad del <code>input_schema</code>).</li>
+<li><strong>Límites o advertencias.</strong></li>
+</ol>
+<div class="table-wrap"><table>
+<tr><th>Mala</th><th>Buena</th></tr>
+<tr><td><code>"Consulta datos."</code></td>
+<td><code>"Ejecuta una consulta SQL de solo lectura (SELECT) sobre la tabla despachos y devuelve las filas como texto. Usala cuando necesites cifras de despachos: m3, precios, plantas o clientes. No la uses para descubrir qué tablas existen. Si no hay coincidencias devuelve 0 filas, lo cual no es un error."</code></td></tr>
+</table></div>
+<p class="sidenote">Ejemplo adaptado del patrón bueno/malo de la <a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools">doc oficial</a>.</p>
+
+<h2>3 · Sin superposición: ni tools genéricas ni duplicadas</h2>
+<p>El objetivo es que para cada pedido haya <strong>una sola tool obviamente correcta</strong>. Eso falla de dos maneras:</p>
+<ul class="tight">
+<li><strong>Tools que se pisan:</strong> <code>buscar_cliente</code> y <code>obtener_cliente</code> con descriptions parecidas. Claude elige al azar. Solución de la guía (2.1): diferenciar las descriptions o renombrar para eliminar la superposición.</li>
+<li><strong>Una tool genérica que hace de todo:</strong> un <code>consultar(algo)</code> ambiguo. La guía propone separarla en tools con propósito específico.</li>
+</ul>
+<p>Y al revés, Anthropic advierte contra envolver cada endpoint de una API en una tool: <em>“More tools don't always lead to better outcomes”</em>. Mejor <code>buscar_contactos</code> que <code>listar_contactos</code> devolviendo todo (<a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Anthropic Engineering</a>). Otra práctica útil: prefijos por servicio (<code>dwh_…</code>, <code>jira_…</code>).</p>
+
+<h2>4 · Cuántas tools le das y cómo forzar su uso</h2>
+<p>Según la guía (2.3), <strong>demasiadas tools degradan la selección</strong>. A cada agente le das solo las que necesita para su rol (principio de especialización). Esto vuelve en el Día 06 con subagentes.</p>
+<p><code>tool_choice</code> controla si Claude puede o debe usar tools:</p>
+<div class="table-wrap"><table>
+<tr><th>Valor</th><th>Comportamiento</th></tr>
+<tr><td><code>{"type": "auto"}</code></td><td>Default. Claude decide si usa alguna tool.</td></tr>
+<tr><td><code>{"type": "any"}</code></td><td>Debe usar <em>alguna</em> tool, sin elegir cuál.</td></tr>
+<tr><td><code>{"type": "tool", "name": "..."}</code></td><td>Debe usar <em>esa</em> tool.</td></tr>
+<tr><td><code>{"type": "none"}</code></td><td>No puede usar tools.</td></tr>
+</table></div>
+<p class="sidenote">Detalles de la <a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools">doc</a>: con <code>any</code> o <code>tool</code> Claude no escribe texto antes del <code>tool_use</code>. Y en los modelos más nuevos (p. ej. Opus 5.5) <code>any</code> y <code>tool</code> devuelven error 400; la alternativa es <code>auto</code> con strict tool use. Para el examen, quedate con la semántica de la tabla: <code>any</code> garantiza que haya una llamada a tool.</p>
+
+<h2>5 · Errores estructurados</h2>
+<p>Ayer viste <code>is_error</code>. Hoy, qué poner adentro. La guía (2.2) distingue:</p>
+<div class="table-wrap"><table>
+<tr><th>Categoría</th><th>Ejemplo en un DWH</th><th>¿Reintentar lo mismo?</th></tr>
+<tr><td>Transitorio</td><td>Timeout de BigQuery</td><td>Sí, en unos segundos</td></tr>
+<tr><td>Validación</td><td>SQL con una columna que no existe</td><td>No: hay que corregir el input</td></tr>
+<tr><td>Negocio</td><td>Pedir datos de un mes futuro</td><td>No: la regla no cambia</td></tr>
+<tr><td>Permiso</td><td>Tabla de costos restringida</td><td>No: sigue sin acceso</td></tr>
+</table></div>
+<pre><code>{"type": "tool_result", "tool_use_id": "toolu_01", "is_error": true,
+ "content": "[permiso] Sin acceso a la tabla 'costos'. Reintentable: no. Informá al usuario que ese dato está restringido."}</code></pre>
+<p>Anthropic pide mensajes de error <strong>accionables</strong>, que le digan al agente qué hacer distinto, en lugar de códigos opacos o tracebacks (<a href="https://www.anthropic.com/engineering/writing-tools-for-agents">fuente</a>).</p>
+
+<div class="callout trap"><span class="label">Trampa típica</span>
+<p>Devolver “sin resultados” cuando en realidad falló el acceso, o marcar como error una consulta que devolvió 0 filas. La guía lo pide explícito: <strong>distinguir una falla de acceso de un resultado vacío</strong>. Si los confundís, Claude le dice al usuario “no hubo ventas” cuando en realidad no pudo mirar.</p></div>
+
+<h2>6 · Quiz (escenarios tipo examen)</h2>
+<div class="quiz" data-src="quiz-0002"></div>
+<script type="application/json" id="quiz-0002">[
+{"q":"Claude confunde seguido <code>buscar_cliente</code> y <code>obtener_cliente</code>. ¿Qué hacés primero?",
+ "options":["Diferenciar las descriptions de ambas tools","Agregar más ejemplos al system prompt","Cambiar a un modelo más grande","Forzar siempre una tool con tool_choice"],"answer":0,
+ "why":"La description es el principal mecanismo de selección. Si dos tools se pisan, se diferencian (o se renombran)."},
+{"q":"Una consulta válida devuelve 0 filas. ¿Qué devuelve la tool?",
+ "options":["Resultado normal indicando cero filas encontradas","Un error con is_error y reintentable","Un error de permiso no reintentable","Una excepción para cortar el loop"],"answer":0,
+ "why":"Vacío no es falla. Marcarlo como error confunde al agente."},
+{"q":"BigQuery devuelve timeout. ¿Cómo lo reportás?",
+ "options":["Error transitorio marcado como sí reintentable","Error de validación marcado no reintentable","Resultado vacío porque no volvió nada","Error de permiso para frenar todo"],"answer":0,
+ "why":"Es temporal: reintentar la misma consulta puede funcionar."},
+{"q":"Un agente con 25 tools elige mal cada vez más seguido. ¿Qué hacés?",
+ "options":["Restringir sus tools a las relevantes","Sumar más tools para cubrir casos","Subir max_tokens para que piense más","Poner tool_choice en none siempre"],"answer":0,
+ "why":"Demasiadas tools degradan la selección (2.3). Cada agente recibe solo las de su rol."},
+{"q":"Necesitás garantizar que Claude llame a alguna tool, sin importar cuál. ¿Qué configurás?",
+ "options":["tool_choice con type en any","tool_choice con type en auto","tool_choice con type en none","Una instrucción en el system"],"answer":0,
+ "why":"<code>any</code> obliga a usar alguna tool. <code>auto</code> deja que Claude decida."},
+{"q":"¿Qué debería incluir la description de <code>dwh_consultar_sql</code>?",
+ "options":["Qué hace, cuándo usarla y límites","Solo el nombre de la tabla","El código Python que la implementa","Una frase corta para ahorrar tokens"],"answer":0,
+ "why":"Qué hace, cuándo sí y cuándo no, parámetros y límites, en 3-4 oraciones como mínimo."}
+]</script>
+
+<h2>7 · Lab (30 min): completar huecos</h2>
+<p>En <a href="../labs/02-tool-design/README.md"><code>labs/02-tool-design/</code></a>, abrí <code>tools.py</code> y completá los 3 huecos <code>___</code>:</p>
+<ol class="steps">
+<li>Las descriptions de <code>dwh_consultar_sql</code> y <code>dwh_listar_tablas</code> (sección 2).</li>
+<li>Si cada tipo de error es reintentable (sección 5).</li>
+<li>Una sugerencia accionable por tipo de error.</li>
+</ol>
+<p>Corré <code>python check.py</code> hasta ver <strong>17/17</strong>. Dejé el autocompletado desactivado en este repo (<code>.vscode/settings.json</code>): las descriptions las escribís vos.</p>
+
+<h2>8 · Cierre (10 min)</h2>
+<ul class="tight">
+<li>3 preguntas tipo examen en <code>notes/dia-02-preguntas.md</code>.</li>
+<li>Errores del quiz a <code>errores.md</code>.</li>
+<li>Commit: <code>git commit -m "lab 02 diseño de tools, closes #3"</code>.</li>
+</ul>
+
+<div class="callout"><span class="label">Preguntá</span>
+<p>Si algo no cierra, preguntale a tu agente: es tu profe.</p></div>
+
+<footer class="lesson"><nav>
+<a href="../reference/diseno-de-tools.html">Referencia: diseño de tools</a>
+<a href="../reference/glosario.html">Glosario</a>
+</nav></footer>
+</main>
+<script src="../assets/quiz.js"></script>
+</body></html>
