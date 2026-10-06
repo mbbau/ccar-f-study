@@ -14,7 +14,7 @@ from dwh import PermisoError, TransitorioError, ValidacionError, consultar_sql, 
 TOOLS = [
     {
         "name": "dwh_consultar_sql",
-        "description": "___",
+        "description": "Ejecuta una consulta de SQL de solo lectura (SELECT) sobre el data warehouse. La tabla de costos está resitrngida: consultarla devuelve un error de permiso. Usala cuando necesites devolver métricas relacionadas ventas o producción. No la uses para descubrir qué tablas o columnas existen; para eso está dwh_listar_tablas. Si no hay coincidencias devuelve 0 filas, lo cual no es un error",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -28,7 +28,7 @@ TOOLS = [
     },
     {
         "name": "dwh_listar_tablas",
-        "description": "___",
+        "description": "Devuelve todas las tablas que tenemos disponibles para utilizar en el DWH junto con sus columnas. Usala antes de escribir SQL para conocer las tablas a consultar. No la uses cuando necesitas ejecutar queries de SQL para obtener métricas del DWH.",
         "input_schema": {"type": "object", "properties": {}},
     },
 ]
@@ -39,18 +39,18 @@ TOOLS = [
 #   ¿Tiene sentido que Claude reintente EXACTAMENTE lo mismo?
 # ---------------------------------------------------------------------------
 ERRORES = {
-    ValidacionError: ("validacion", ___),
-    PermisoError: ("permiso", ___),
-    TransitorioError: ("transitorio", ___),
+    ValidacionError: ("validacion", False),
+    PermisoError: ("permiso", False),
+    TransitorioError: ("transitorio", True),
 }
 
 # ---------------------------------------------------------------------------
 # HUECO 3 · Qué le sugerís a Claude en cada caso (mensaje accionable, 1 oración)
 # ---------------------------------------------------------------------------
 SUGERENCIAS = {
-    "validacion": "___",
-    "permiso": "___",
-    "transitorio": "___",
+    "validacion": "Revisar el input schema y corregir el input antes de reintentar.",
+    "permiso": "No reintentes: informá al usuario que ese dato está restringido.",
+    "transitorio": "Esperar unos segundos, y volver a intentarlo.",
 }
 
 
