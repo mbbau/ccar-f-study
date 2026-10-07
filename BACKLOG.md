@@ -19,7 +19,7 @@
 - [x] Commitear los cambios del cierre del Día 02 (`NOTES.md`, `errores.md`)
 - [x] **Día 03** · System prompts y few-shot (#8): lección y quizzes OK (6/6) · lab 17/17 · cierre 3/3 (falta el nombre exacto `tool_result`/`tool_use_id`) · commit hecho
 - [x] **Día 04** · Salida estructurada y Message Batches (#9): quiz 5/6, lab 14/14, cierre 3/3
-- [ ] **Día 05** · Ventana de contexto y lost in the middle (#11). Reforzar "¿qué ve Claude?" (falló la pregunta 3 del Día 02)
+- [ ] **Día 05** → **movido a jue 08/10** · Ventana de contexto y lost in the middle (#11). Reforzar "¿qué ve Claude?" (falló la pregunta 3 del Día 02)
 
 ## 📅 Plan de recuperación (hasta el Día 10)
 
@@ -29,9 +29,9 @@ y nunca dos labs pesados seguidos.
 | Fecha | Días del plan |
 |---|---|
 | lun 06/10 | ✅ 01 · 02 |
-| mié 07/10 | 03 · 04 · 05 |
-| jue 08/10 | 06 · 07 · 08 |
-| vie 09/10 | 09 (lab integrador MCP) · 10 (repaso + cuestionario ronda 1) → verificar ritmo y fecha del examen |
+| mié 07/10 | ✅ 03 · 04 (05 pasa al jueves) |
+| jue 08/10 | 05 · 06 · 07 (+ quiz 0001) |
+| vie 09/10 | 08 · 09 (lab integrador MCP) · 10 (repaso + cuestionario ronda 1) → verificar ritmo y fecha del examen |
 
 Desde el lun 12/10 se vuelve a 1 día de plan por día hábil (Día 11 → Día 20 el vie 23/10).
 
