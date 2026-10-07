@@ -1,6 +1,6 @@
 # Backlog — Certificación CCAR-F
 
-**Última actualización:** 2026-10-07 (creación del backlog; Días 01–02 hechos, recuperación en curso)
+**Última actualización:** 2026-10-07 (Día 03 hecho; Día 04 más tarde hoy)
 **Examen:** mar 27/10/2026 · meta ≥ 800/1000 (corte 720)
 
 > Resumen del día a día: qué hicimos, qué toca hoy y qué falta. Claude lo lee al arrancar
@@ -14,10 +14,10 @@
 
 ## 🔥 Hoy — mié 07/10
 
-- [ ] Rehacer el quiz final de la lección 0001 y pasar los errores del Día 01 a `errores.md` (quedó pendiente)
-- [ ] Repregunta de arranque: formato de `tool_result` (`role: "user"` + bloque `tool_result` + `tool_use_id` = `block.id`)
-- [ ] Commitear los cambios del cierre del Día 02 (`NOTES.md`, `errores.md`)
-- [ ] **Día 03** · System prompts y few-shot (#8)
+- [ ] Rehacer el quiz final de la lección 0001 y pasar los errores del Día 01 a `errores.md` → **movido a jue 08/10**
+- [x] Repregunta de arranque: formato de `tool_result` (`role: "user"` + bloque `tool_result` + `tool_use_id` = `block.id`)
+- [x] Commitear los cambios del cierre del Día 02 (`NOTES.md`, `errores.md`)
+- [x] **Día 03** · System prompts y few-shot (#8): lección y quizzes OK (6/6) · lab 17/17 · cierre 3/3 (falta el nombre exacto `tool_result`/`tool_use_id`) · commit hecho
 - [ ] **Día 04** · Salida estructurada y Message Batches (#9)
 - [ ] **Día 05** · Ventana de contexto y lost in the middle (#11). Reforzar "¿qué ve Claude?" (falló la pregunta 3 del Día 02)
 
@@ -56,10 +56,13 @@ Desde el lun 12/10 se vuelve a 1 día de plan por día hábil (Día 11 → Día 
 
 ## 🎯 Puntos flojos a vigilar
 
-- Formato de `tool_result`: lo confundió con `tool_choice: any`. Repreguntar hasta que salga solo.
+- Formato de `tool_result`: lo confundió con `tool_choice: any` (6/10) y con el historial (7/10). Repreguntar hasta que salga solo.
+- Dónde va `system` (parámetro de primer nivel, no un mensaje): no lo recordó el 7/10.
 - Ponerse en el lugar de Claude: solo sabe lo que la tool le devuelve (una falla disfrazada de "0 filas" produce una respuesta falsa).
 
 ## ✅ Hecho
+
+- **mié 07/10** — Día 03 · System prompts y few-shot (#8): lección (quizzes 6/6 y 2/2), lab 17/17 en 4 iteraciones, cierre 3/3, learning record 0002.
 
 - **lun 06/10** — Día 02 · Diseño de tools y `tool_choice` (#3): lección, lab y preguntas de cierre (2/3 bien).
 - **lun 06/10** — Día 01 · Messages API y agentic loop (#1): lección, lab y registro de aprendizaje 0001. Repaso tras 7 días de pausa.

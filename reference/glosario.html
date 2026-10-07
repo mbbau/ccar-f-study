@@ -23,5 +23,11 @@
 <tr><td>tool_choice</td><td>Parámetro que controla el uso de tools: <code>auto</code>, <code>any</code>, <code>tool</code> (una específica), <code>none</code>.</td><td>0002</td></tr>
 <tr><td>namespacing</td><td>Prefijos por servicio en los nombres de tools (<code>dwh_…</code>, <code>jira_…</code>) para evitar ambigüedad.</td><td>0002</td></tr>
 <tr><td>retryable error</td><td>Error que puede resolverse reintentando lo mismo (transitorio). Validación, negocio y permiso no lo son.</td><td>0002</td></tr>
+<tr><td>system prompt</td><td>Instrucciones del parámetro <code>system</code>; lugar natural para el rol (“Sos un revisor de DAX…”).</td><td><a href="../lessons/0003-system-prompts-y-few-shot.html">0003</a></td></tr>
+<tr><td>few-shot (multishot) prompting</td><td>Incluir ejemplos de entrada → salida en el prompt. Guía: 2–4 ejemplos dirigidos a casos ambiguos, con razonamiento.</td><td>0003</td></tr>
+<tr><td>explicit criteria</td><td>Reglas categóricas de qué reportar y qué omitir; superan a “be conservative” / “high-confidence only”.</td><td>0003</td></tr>
+<tr><td>false positive</td><td>Hallazgo reportado que no era un problema. Una categoría ruidosa erosiona la confianza en todas.</td><td>0003</td></tr>
+<tr><td>precision / recall</td><td>Precisión: cuántos reportes eran reales. Recall: cuántos problemas reales se reportaron.</td><td>0003</td></tr>
+<tr><td>XML tags</td><td>Delimitadores (<code>&lt;criterios&gt;</code>, <code>&lt;example&gt;</code>) que separan instrucciones, ejemplos y entrada variable.</td><td>0003</td></tr>
 </table></div>
 </main></body></html>

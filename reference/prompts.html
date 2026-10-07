@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Referencia · Prompts</title><link rel="stylesheet" href="../assets/style.css"></head>
+<body><main>
+<header class="lesson"><div class="kicker">Referencia · D4</div><h1>System prompts y few-shot</h1>
+<p class="subtitle">Ficha rápida. Lección: <a href="../lessons/0003-system-prompts-y-few-shot.html">0003</a>.</p></header>
+
+<h2>Anatomía</h2>
+<div class="table-wrap"><table>
+<tr><th>Pieza</th><th>Dónde</th></tr>
+<tr><td>Rol (1 oración alcanza)</td><td><code>system</code></td></tr>
+<tr><td>Criterios: reportar / omitir + severidad con ejemplo por nivel</td><td><code>&lt;criterios&gt;</code>, <code>&lt;severidad&gt;</code></td></tr>
+<tr><td>2–4 ejemplos límite con razonamiento</td><td><code>&lt;examples&gt;&lt;example&gt;</code></td></tr>
+<tr><td>Entrada variable</td><td>su propio tag, nombrado igual que en las instrucciones</td></tr>
+</table></div>
+
+<h2>Reglas (4.1 · 4.2)</h2>
+<ul class="tight">
+<li>Criterio <strong>categórico</strong> &gt; “be conservative” / “only high-confidence”.</li>
+<li>Categoría con muchos falsos positivos → desactivarla temporalmente mientras se mejora.</li>
+<li>Few-shot = la técnica para <strong>formato consistente</strong> y <strong>casos ambiguos</strong>.</li>
+<li>Al menos un ejemplo de “omitir”: un patrón aceptable que parece problema.</li>
+<li>Ejemplos relevantes, diversos y en <code>&lt;example&gt;</code>. Guía: 2–4; doc: 3–5.</li>
+<li>Explicá el porqué de una instrucción: Claude generaliza desde la explicación.</li>
+</ul>
+
+<h2>Cuándo no</h2>
+<div class="table-wrap"><table>
+<tr><th>Si el problema es…</th><th>…la respuesta es</th></tr>
+<tr><td>Límites de decisión poco claros</td><td>Criterios + few-shot</td></tr>
+<tr><td>Paso obligatorio con impacto financiero</td><td>Forzarlo en código</td></tr>
+<tr><td>Mala selección de tools</td><td>Mejorar descriptions</td></tr>
+<tr><td>Calibrar con confianza autoinformada</td><td>No: está mal calibrada</td></tr>
+</table></div>
+<p class="sidenote">Fuentes: <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices">Prompting best practices</a> · <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5">Prompting Claude Opus 5</a> · Guía oficial 4.1–4.2 y preguntas Q1–Q3.</p>
+</main></body></html>

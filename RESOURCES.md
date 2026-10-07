@@ -34,6 +34,17 @@ Fuentes oficiales y verificables para preparar la certificación Claude Certifie
 - [Anthropic Engineering: Writing effective tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents)
   Principios: no envolver cada endpoint, consolidar, contexto significativo, eficiencia de tokens, errores accionables.
 
+### D4 (guía) · Prompt engineering
+
+- [Docs: Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices)
+  Página única que reemplaza a las viejas (be clear and direct, multishot, XML tags, system prompts / role). **Fuente primaria del Día 03.**
+- [Docs: Prompting Claude Opus 5](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5)
+  Instrucciones literales en modelos nuevos: "be conservative" reduce el recall; reportar todo y filtrar en otra pasada. (Ver también la página de Opus 4.8, sección *Code review harnesses*.)
+- [Anthropic Engineering: Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
+  System prompts "a la altura correcta"; ejemplos canónicos y diversos en vez de listas de casos borde.
+- [anthropics/claude-code-security-review · prompts.py](https://github.com/anthropics/claude-code-security-review/blob/main/claudecode/prompts.py)
+  Prompt real de revisión con listas explícitas de exclusiones para minimizar falsos positivos.
+
 ### D2 · Claude Code: configuración y workflows (20%)
 
 - [Claude Code Docs: Overview](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview)

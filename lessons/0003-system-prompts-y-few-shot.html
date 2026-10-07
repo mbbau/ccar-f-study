@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>0003 · System prompts y few-shot</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head><body><main>
+
+<header class="lesson">
+  <div class="kicker">Día 03 · Mié 7/10 · Issue #8 · Guía: task statements 4.1, 4.2</div>
+  <h1>System prompts y few-shot</h1>
+  <p class="subtitle">"Sé cuidadoso" no le dice a Claude dónde está el límite. Un criterio concreto y dos o tres ejemplos límite sí.</p>
+  <p class="meta">Antes: <a href="0002-diseno-de-tools.html">0002</a> · ≈ 40 min de estudio + 30 min de lab · Fuente primaria: <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices">Prompting best practices</a></p>
+</header>
+
+<h2>0 · Repaso del Día 02 (10 min)</h2>
+<p class="sidenote">Sin mirar la lección de ayer.</p>
+<div class="quiz" data-src="repaso-0002"></div>
+<script type="application/json" id="repaso-0002">[
+{"q":"Una consulta válida devuelve 0 filas. ¿Cómo la devuelve la tool?",
+ "options":["Resultado normal que dice cero filas","Error con is_error marcado reintentable","Error de permiso no reintentable","Mensaje assistant con texto explicativo"],"answer":0,
+ "why":"Vacío no es falla. Y al revés: una falla nunca se disfraza de vacío, porque Claude solo sabe lo que la tool le devuelve."},
+{"q":"Claude confunde <code>buscar_cliente</code> y <code>obtener_cliente</code>. ¿Primer paso?",
+ "options":["Diferenciar las descriptions de las dos","Agregar ejemplos al system del agente","Cambiar a un modelo de mayor tamaño","Forzar una de ellas con tool_choice"],"answer":0,
+ "why":"La description es el principal mecanismo de selección (2.1). Ojo: hoy vas a ver que few-shot tampoco es la primera respuesta para esto."},
+{"q":"Un agente con 25 tools elige mal cada vez más. ¿Qué hacés?",
+ "options":["Darle solo las tools de su rol","Sumarle tools para cubrir más casos","Subir max_tokens para que piense","Poner tool_choice en none siempre"],"answer":0,
+ "why":"Demasiadas tools degradan la selección (2.3)."}
+]</script>
+
+<div class="callout win"><span class="label">El logro de hoy</span>
+<p>Tomar un prompt vago de revisión y convertirlo en uno con criterios explícitos, ejemplos límite y delimitadores XML. En el lab: 17/17 en <code>labs/03-prompts/check.py</code>, con un prompt para revisar medidas DAX.</p></div>
+
+<h2>1 · Las cuatro piezas de un prompt</h2>
+<p>Un buen prompt para una tarea repetida (revisar, clasificar, extraer) suele tener cuatro piezas, cada una en su lugar:</p>
+<div class="table-wrap"><table>
+<tr><th>Pieza</th><th>Dónde va</th><th>Qué aporta</th></tr>
+<tr><td><strong>Rol</strong></td><td><code>system</code></td><td>Enfoca tono y comportamiento. <em>“Even a single sentence makes a difference.”</em></td></tr>
+<tr><td><strong>Criterios</strong></td><td>system o user, en <code>&lt;criterios&gt;</code></td><td>Dónde está el límite entre reportar y omitir.</td></tr>
+<tr><td><strong>Ejemplos</strong></td><td>en <code>&lt;examples&gt;</code></td><td>Cómo se aplica el criterio en los casos dudosos.</td></tr>
+<tr><td><strong>Entrada variable</strong></td><td>user, en su propio tag</td><td>Lo que cambia en cada llamada, separado de las instrucciones.</td></tr>
+</table></div>
+<p class="sidenote">Citas de <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#give-claude-a-role">Give Claude a role</a>. Recordá del Día 01: <code>system</code> es un parámetro de primer nivel, no un mensaje dentro de <code>messages</code>.</p>
+<p>La regla de oro de la doc: <em>“Show your prompt to a colleague with minimal context on the task and ask them to follow it. If they'd be confused, Claude will be too.”</em> Pensá en Claude como <em>“a brilliant but new employee who lacks context on your norms”</em> (<a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#be-clear-and-direct">fuente</a>). Es otra vez la idea del Día 02: <strong>Claude solo sabe lo que le das</strong>. Si tu criterio vive en tu cabeza, no existe para él.</p>
+
+<h2>2 · Criterios explícitos, no instrucciones vagas (4.1)</h2>
+<p>La guía es directa: instrucciones generales como <em>“be conservative”</em> o <em>“only report high-confidence findings”</em> <strong>no mejoran la precisión</strong> comparadas con criterios categóricos específicos.</p>
+<div class="table-wrap"><table>
+<tr><th>Vago</th><th>Explícito</th></tr>
+<tr><td>“Revisá que los comentarios sean correctos.”</td><td>“Marcá un comentario solo cuando el comportamiento que describe contradice lo que hace el código.”</td></tr>
+<tr><td>“Reportá solo lo importante.”</td><td>“Reportá bugs que puedan causar un resultado incorrecto, un test fallido o un número engañoso. Omití estilo y nombres.”</td></tr>
+</table></div>
+<p class="sidenote">Fila 1: ejemplo textual de la guía (4.1). Fila 2: adaptado de <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-4-8">Prompting Claude Opus 4.8 · Code review harnesses</a>.</p>
+<p>¿Por qué falla lo vago? “Importante” no define una frontera: cada caso queda a criterio del modelo y el resultado es inconsistente. Y con los modelos nuevos hay un efecto extra: siguen la instrucción <em>al pie de la letra</em>. Si decís “be conservative”, <em>“the model may follow that instruction literally and report less”</em> (<a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5">Prompting Claude Opus 5</a>): sube la precisión pero se te escapan bugs reales.</p>
+
+<h3>Precisión, falsos positivos y confianza del equipo</h3>
+<p>Un <strong>falso positivo</strong> es un hallazgo reportado que no era un problema. La guía remarca algo que en BI conocés: si una categoría de alertas falla seguido, el equipo deja de creer <em>también</em> en las alertas buenas. Es como un tablero con un KPI mal calculado: después nadie confía en ninguno.</p>
+<p>Lo que pide el examen:</p>
+<ul class="tight">
+<li><strong>Definir qué reportar y qué omitir</strong> por categoría (bugs, seguridad sí; estilo menor, patrones locales no), en lugar de filtrar por “confianza”.</li>
+<li><strong>Desactivar temporalmente</strong> la categoría con muchos falsos positivos para recuperar la confianza mientras mejorás su prompt.</li>
+<li><strong>Severidad con un ejemplo concreto por nivel</strong>, para que la clasificación sea consistente.</li>
+</ul>
+
+<h2>3 · Few-shot: mostrar el límite con ejemplos (4.2)</h2>
+<p>La doc: <em>“Examples are one of the most reliable ways to steer Claude's output format, tone, and structure.”</em> La guía agrega para qué sirven en el examen:</p>
+<ul class="tight">
+<li><strong>Consistencia de formato</strong> cuando las instrucciones solas dan salidas dispares (ubicación, problema, severidad, fix).</li>
+<li><strong>Casos ambiguos:</strong> mostrar cómo se resuelve el caso dudoso, <em>con el razonamiento</em> de por qué se eligió esa acción y no la alternativa plausible.</li>
+<li><strong>Generalizar:</strong> el modelo aprende el criterio y lo aplica a casos nuevos, en vez de solo reconocer los casos listados.</li>
+<li><strong>Extracción:</strong> ejemplos con documentos de formatos variados reducen campos vacíos y alucinaciones (vuelve en el Día 04).</li>
+</ul>
+<p>Cómo armarlos, según la <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#use-examples-effectively">doc</a>: <strong>relevantes</strong> (parecidos a tu caso real), <strong>diversos</strong> (que no copie un patrón accidental) y <strong>estructurados</strong> (cada uno en <code>&lt;example&gt;</code>, todos dentro de <code>&lt;examples&gt;</code>).</p>
+<div class="callout"><span class="label">¿Cuántos?</span>
+<p>La guía del examen dice <strong>2–4 ejemplos dirigidos</strong> a los casos ambiguos. La doc dice “3–5 para mejores resultados”. Para el examen, respondé con 2–4. Y que haya al menos un ejemplo de “no reportar”: es el que le muestra a Claude un patrón aceptable que <em>parece</em> un problema.</p></div>
+<p>Anthropic también advierte no llenar el prompt con una lista interminable de casos borde: mejor <em>“a set of diverse, canonical examples”</em>, porque para un LLM <em>“examples are the 'pictures' worth a thousand words”</em> (<a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">Effective context engineering</a>).</p>
+
+<h2>4 · Delimitadores XML</h2>
+<p>Cuando el prompt mezcla instrucciones, contexto, ejemplos y entradas variables, los tags XML <em>“help Claude parse complex prompts unambiguously”</em> (<a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#structure-prompts-with-xml-tags">fuente</a>). Tres reglas:</p>
+<ol class="steps">
+<li><strong>Nombres descriptivos y consistentes.</strong> Si las instrucciones dicen “la medida está en <code>&lt;medida&gt;</code>”, el tag se llama <code>medida</code>, siempre.</li>
+<li><strong>Anidá cuando hay jerarquía:</strong> <code>&lt;examples&gt;&lt;example&gt;…</code>, <code>&lt;documents&gt;&lt;document index="1"&gt;…</code>.</li>
+<li><strong>La entrada variable va aparte</strong>, así Claude no confunde el dato que revisa con una instrucción.</li>
+</ol>
+<pre><code>&lt;criterios&gt;
+Reportá: medidas que pueden devolver un resultado incorrecto...
+No reportes: preferencias de estilo (nombres, formato)...
+&lt;/criterios&gt;
+&lt;examples&gt;
+  &lt;example&gt;&lt;medida&gt;Margen % = [Margen] / [Ventas]&lt;/medida&gt;
+  &lt;razonamiento&gt;Si Ventas = 0 devuelve infinito...&lt;/razonamiento&gt;&lt;/example&gt;
+&lt;/examples&gt;
+&lt;medida&gt;{la medida de hoy}&lt;/medida&gt;</code></pre>
+
+<h2>5 · Cuándo few-shot NO es la respuesta</h2>
+<p>Las preguntas de ejemplo de la guía ponen few-shot como distractor en dos casos. Saber esto vale puntos:</p>
+<div class="table-wrap"><table>
+<tr><th>Problema</th><th>Respuesta correcta</th><th>Por qué no few-shot</th></tr>
+<tr><td>El agente escala casos simples y resuelve solo los complejos</td><td><strong>Criterios explícitos + few-shot</strong> en el system (Q3)</td><td>Acá sí: el problema son límites de decisión poco claros.</td></tr>
+<tr><td>El agente se saltea un paso obligatorio el 12% de las veces, con impacto financiero</td><td>Un prerrequisito <strong>programático</strong> en el código (Q1)</td><td>Un prompt da cumplimiento <em>probabilístico</em>; si el error cuesta plata, se fuerza en código.</td></tr>
+<tr><td>Claude elige mal entre tools con descriptions mínimas</td><td><strong>Mejorar las descriptions</strong> (Q2)</td><td>Los ejemplos agregan tokens sin arreglar la causa.</td></tr>
+</table></div>
+<div class="callout trap"><span class="label">Trampa típica</span>
+<p>Elegir “que el modelo reporte su confianza del 1 al 10 y filtrar debajo de un umbral”. La guía: la confianza autoinformada por un LLM <strong>está mal calibrada</strong>; el agente ya está seguro en los casos que resuelve mal. La primera respuesta proporcional es criterio explícito + ejemplos, antes de agregar infraestructura.</p></div>
+
+<h2>6 · ¿Qué ve Claude?</h2>
+<p class="sidenote">Práctica del punto flojo del Día 02: ponerte en el lugar del modelo.</p>
+<div class="quiz" data-src="ve-claude"></div>
+<script type="application/json" id="ve-claude">[
+{"q":"Tu prompt dice <em>“reportá solo lo importante”</em>. Para vos, importante es lo que cambia un número del informe. ¿Qué sabe Claude de eso?",
+ "options":["Nada: la definición no está en el prompt","Lo infiere del rol que pusiste en system","Lo deduce de las medidas que ya revisó","Lo aprende de las conversaciones anteriores"],"answer":0,
+ "why":"Solo sabe lo que le das. Y la API es stateless: no aprende de llamadas anteriores."},
+{"q":"Tus 3 ejemplos son todos de “reportar”. Llega una medida con <code>REMOVEFILTERS</code> intencional. ¿Qué es lo más probable?",
+ "options":["Que la reporte como si fuera un bug","Que la omita porque el nombre lo aclara","Que pida más contexto antes de decidir","Que devuelva un error de formato inválido"],"answer":0,
+ "why":"Nunca vio dónde está el límite del lado “omitir”. Por eso hace falta un ejemplo de patrón aceptable."}
+]</script>
+
+<h2>7 · Quiz (escenarios tipo examen)</h2>
+<div class="quiz" data-src="quiz-0003"></div>
+<script type="application/json" id="quiz-0003">[
+{"q":"Tu revisor automático de PRs tiene muchos falsos positivos y los devs empiezan a ignorarlo. El prompt dice “be conservative”. ¿Qué cambio es el más efectivo?",
+ "options":["Criterios por categoría de qué reportar y omitir","Agregar “only report high-confidence findings”","Pedir un score de confianza y filtrar debajo de 7","Correr tres veces y quedarte con lo repetido"],"answer":0,
+ "why":"4.1: los criterios categóricos mejoran la precisión; las instrucciones de confianza no. Correr tres veces (consenso) suprime bugs reales (Q12 de la guía)."},
+{"q":"Una sola categoría (comentarios desactualizados) concentra casi todos los falsos positivos. ¿Qué hacés mientras mejorás su prompt?",
+ "options":["La desactivás temporalmente para recuperar confianza","Le subís la severidad para que se note","Agregás una advertencia general al prompt","Mantenés todo igual hasta tener el fix"],"answer":0,
+ "why":"Skill explícito de 4.1: desactivar la categoría ruidosa para no contaminar la confianza en las categorías precisas."},
+{"q":"Las instrucciones detalladas producen hallazgos con formatos distintos en cada corrida. ¿Qué agregás?",
+ "options":["Ejemplos few-shot con el formato deseado","Más reglas de formato en mayúsculas","Una temperatura más baja en el request","Un segundo prompt que reescriba la salida"],"answer":0,
+ "why":"4.2: few-shot es la técnica más efectiva para un formato consistente cuando las instrucciones solas no alcanzan."},
+{"q":"¿Cuántos ejemplos few-shot recomienda la guía para casos ambiguos, y qué deben mostrar?",
+ "options":["2 a 4, con el razonamiento de cada decisión","10 o más, cubriendo cada caso posible","1 solo, con el formato de la salida","2 a 4, mostrando solo la respuesta final"],"answer":0,
+ "why":"2–4 ejemplos dirigidos que muestren por qué se eligió una acción frente a las alternativas plausibles."},
+{"q":"Tu agente saltea la verificación de identidad antes de un reembolso en el 8% de los casos. ¿Qué hacés?",
+ "options":["Lo forzás en el código como prerrequisito","Agregás ejemplos few-shot del flujo correcto","Escribís la regla en mayúsculas en system","Pedís que confirme el paso antes de seguir"],"answer":0,
+ "why":"Con consecuencias financieras, el cumplimiento probabilístico de un prompt no alcanza (Q1 de la guía)."},
+{"q":"Tu prompt incluye instrucciones, 3 ejemplos y la medida DAX a revisar, todo en texto corrido. ¿Qué mejora la doc?",
+ "options":["Separar cada parte en tags XML descriptivos","Poner la medida al principio del texto","Repetir las instrucciones al final del todo","Pasar todos los ejemplos al parámetro system"],"answer":0,
+ "why":"Los tags XML le permiten a Claude distinguir instrucciones, ejemplos y entrada variable sin ambigüedad."}
+]</script>
+
+<h2>8 · Lab (30 min): completar huecos</h2>
+<p>En <a href="../labs/03-prompts/README.md"><code>labs/03-prompts/</code></a>, abrí <code>prompt.py</code> y completá los 3 huecos <code>___</code>:</p>
+<ol class="steps">
+<li><strong>Criterios explícitos</strong>: qué categorías reportar y cuáles no (sección 2).</li>
+<li><strong>El tercer ejemplo few-shot</strong>, un caso ambiguo con tus datos de despachos (sección 3).</li>
+<li><strong>El tag XML</strong> que delimita la medida (sección 4).</li>
+</ol>
+<p>Corré <code>python check.py</code> hasta ver <strong>17/17</strong>. Después <code>python prompt.py</code> y leé el prompt entero como si fueras Claude: ¿entenderías dónde está el límite?</p>
+
+<h2>9 · Cierre (10 min)</h2>
+<ul class="tight">
+<li>Rehacer el quiz final de la <a href="0001-messages-api-y-agentic-loop.html">lección 0001</a> (pendiente) y pasar los errores a <code>errores.md</code>.</li>
+<li>Errores del quiz de hoy a <code>errores.md</code>.</li>
+<li>Commit: <code>git commit -m "Día 03: lab prompts, closes #8"</code>.</li>
+</ul>
+
+<div class="callout"><span class="label">Preguntá</span>
+<p>Si algo no cierra, preguntale a tu agente: es tu profe.</p></div>
+
+<footer class="lesson"><nav>
+<a href="../reference/prompts.html">Referencia: prompts</a>
+<a href="../reference/glosario.html">Glosario</a>
+</nav></footer>
+</main>
+<script src="../assets/quiz.js"></script>
+</body></html>
