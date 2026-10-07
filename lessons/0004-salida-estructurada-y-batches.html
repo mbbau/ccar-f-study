@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>0004 · Salida estructurada y Batches</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head><body><main>
+
+<header class="lesson">
+  <div class="kicker">Día 04 · Mié 7/10 · Issue #9 · Guía: task statements 4.3, 4.4, 4.5</div>
+  <h1>Salida estructurada y Message Batches</h1>
+  <p class="subtitle">El schema garantiza la forma, no el sentido. Y Batches te cobra la mitad, a cambio de no prometerte cuándo.</p>
+  <p class="meta">Antes: <a href="0003-system-prompts-y-few-shot.html">0003</a> · ≈ 40 min de estudio + 30 min de lab · Fuentes primarias: <a href="https://platform.claude.com/docs/en/build-with-claude/structured-outputs">Structured outputs</a> · <a href="https://platform.claude.com/docs/en/build-with-claude/batch-processing">Batch processing</a></p>
+</header>
+
+<h2>0 · Repaso del Día 03 (5 min)</h2>
+<div class="quiz" data-src="repaso-0003"></div>
+<script type="application/json" id="repaso-0003">[
+{"q":"Un revisor tiene muchos falsos positivos. El prompt dice “be conservative”. ¿Qué lo mejora?",
+ "options":["Criterios categóricos de qué reportar y omitir","Pedir un score de confianza y filtrar","Agregar “only high-confidence findings”","Correr tres veces y cruzar resultados"],"answer":0,
+ "why":"4.1: criterios explícitos por categoría. La confianza autoinformada está mal calibrada."},
+{"q":"¿Por qué un ejemplo few-shot de “omitir”?",
+ "options":["Muestra un patrón aceptable que parece problema","Reduce la cantidad de tokens del prompt","Evita que Claude use el formato pedido","Reemplaza a los criterios del system"],"answer":0,
+ "why":"Sin él, Claude nunca ve dónde está el límite del lado “no reportar”."}
+]</script>
+
+<div class="callout win"><span class="label">El logro de hoy</span>
+<p>Armar un pipeline de extracción que no invente datos, detecte números que no cierran y sepa cuándo reintentar sirve. En el lab: 14/14 en <code>labs/04-structured-output/check.py</code>, con pedidos de hormigón.</p></div>
+
+<h2>1 · Una tool como molde de salida</h2>
+<p>Hasta ahora las tools <em>hacían</em> algo (consultar el DWH). Hoy una tool que no hace nada: su <code>input_schema</code> <strong>es el formato que querés</strong>. Claude “llama” a <code>registrar_pedido</code> y lo que viene en <code>tool_use.input</code> es el JSON extraído. Tu código ni la ejecuta: lee el input y listo.</p>
+<p>La guía (4.3) lo llama <em>“the most reliable approach for guaranteed schema-compliant structured output, eliminating JSON syntax errors”</em>. Pedirle “respondé en JSON” en el prompt, en cambio, puede devolver JSON roto o con campos de más.</p>
+
+<h3>Cómo te asegurás de que llame a la tool</h3>
+<p>Ya lo conocés del Día 02, ahora con su uso real:</p>
+<div class="table-wrap"><table>
+<tr><th><code>tool_choice</code></th><th>Para extracción</th></tr>
+<tr><td><code>auto</code></td><td>Riesgo: Claude puede contestar en texto en vez de llamar a la tool.</td></tr>
+<tr><td><code>any</code></td><td>Tenés <strong>varios schemas</strong> (factura, remito, pedido) y no sabés qué documento llega: Claude elige cuál, pero alguno usa seguro.</td></tr>
+<tr><td><code>{"type":"tool","name":"…"}</code></td><td>Necesitás <strong>esa</strong> extracción sí o sí (p. ej. metadatos antes de enriquecer).</td></tr>
+</table></div>
+<div class="callout"><span class="label">Examen vs. API de hoy</span>
+<p>Para el examen, la tabla de arriba. En la API actual, Opus 5.5 y Sonnet 5.5 devuelven 400 con <code>any</code> y <code>tool</code>; la alternativa es <code>auto</code> + <code>strict: true</code> en la tool, o <strong>structured outputs</strong> (<code>output_config.format</code> con un JSON Schema), que garantizan el schema por <em>constrained decoding</em> (<a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools#forcing-tool-use">define tools</a> · <a href="https://platform.claude.com/docs/en/build-with-claude/structured-outputs">structured outputs</a>).</p></div>
+
+<h2>2 · Diseñar el schema para que no invente</h2>
+<p>Si un campo es obligatorio y de tipo <code>string</code>, y el email no dice la fecha, ¿qué hace Claude para cumplir? <strong>La inventa.</strong> El schema lo obliga. Tres patrones de la guía (4.3):</p>
+<ol class="steps">
+<li><strong>Campos nullable</strong> cuando el documento puede no tener el dato: <code>"type": ["string", "null"]</code>. Así “no está” tiene una respuesta válida.</li>
+<li><strong><code>"other"</code> + campo de detalle</strong> en los enums: si el cliente pide “autocompactante H35”, va <code>"otro"</code> y el texto en <code>tipo_hormigon_detalle</code>, en lugar de forzarlo a H30.</li>
+<li><strong><code>"unclear"</code></strong> para casos ambiguos, y reglas de normalización en el prompt (“fechas en AAAA-MM-DD”) para fuentes con formatos dispares.</li>
+</ol>
+<p class="sidenote">Es el mismo principio del Día 02 y el 03: Claude solo tiene lo que le das. Si el schema no le da la opción de decir “no sé”, no la tiene.</p>
+
+<h2>3 · Forma ≠ sentido: validar y reintentar (4.4)</h2>
+<p>La guía es precisa: los schemas estrictos <em>“eliminate syntax errors but do not prevent semantic errors (e.g., line items that don't sum to total, values in wrong fields)”</em>.</p>
+<pre><code>{"lineas": [{"m3": 20}, {"m3": 15}], "total_m3_declarado": 40}   ← schema válido, números que no cierran</code></pre>
+<p>Eso lo atrapa <strong>tu código</strong>: calculás <code>calculated_total</code> y lo comparás con <code>stated_total</code>, o marcás <code>conflict_detected</code> si la fuente misma es inconsistente.</p>
+
+<h3>Retry-with-error-feedback</h3>
+<p>Cuando la validación falla, el reintento lleva <strong>tres piezas</strong>: el documento original, la extracción fallida y el error específico. Así Claude sabe qué corregir, en lugar de repetir lo mismo.</p>
+<div class="table-wrap"><table>
+<tr><th>Error</th><th>¿Reintentar sirve?</th></tr>
+<tr><td>Formato (fecha “15/11” en vez de “2026-11-15”)</td><td><strong>Sí</strong>: el dato está, solo hay que reescribirlo.</td></tr>
+<tr><td>Estructura (valor en el campo equivocado)</td><td><strong>Sí</strong>: con el error, lo reubica.</td></tr>
+<tr><td>Dato ausente del documento</td><td><strong>No</strong>: reintentar no lo hace aparecer. A lo sumo, lo inventa.</td></tr>
+</table></div>
+<div class="callout trap"><span class="label">Trampa típica</span>
+<p>Reintentar en loop una extracción porque “falta el CUIT”, cuando el CUIT está en otro documento que nunca le pasaste. La guía lo pide explícito: identificar cuándo el reintento es inútil porque la información <em>no está en la fuente</em>.</p></div>
+<p class="sidenote">También de 4.4: un campo <code>detected_pattern</code> en cada hallazgo permite analizar qué patrones descartan más los devs. Es el feedback loop del revisor del Día 03.</p>
+
+<h2>4 · Message Batches API (4.5)</h2>
+<div class="table-wrap"><table>
+<tr><th>Dato</th><th>Valor</th></tr>
+<tr><td>Costo</td><td><strong>50%</strong> del precio estándar</td></tr>
+<tr><td>Latencia</td><td>La mayoría en &lt; 1 h, pero <strong>hasta 24 h</strong> y <strong>sin SLA</strong>; a las 24 h expira</td></tr>
+<tr><td>Correlación</td><td><code>custom_id</code> por request: <em>el orden de los resultados no está garantizado</em></td></tr>
+<tr><td>Resultados</td><td><code>succeeded</code> · <code>errored</code> · <code>canceled</code> · <code>expired</code>; uno que falla no afecta a los otros</td></tr>
+<tr><td>Tools</td><td>No podés ejecutar <em>tus</em> tools a mitad de un request y devolver el resultado: no hay loop agéntico con client tools</td></tr>
+</table></div>
+<p class="sidenote">Fuentes: <a href="https://platform.claude.com/docs/en/build-with-claude/batch-processing">Batch processing</a> y guía 4.5.</p>
+<p><strong>La regla:</strong> ¿alguien está esperando la respuesta para seguir? Entonces API sincrónica. Si no, Batches.</p>
+<ul class="tight">
+<li><strong>Batches:</strong> reporte nocturno de deuda técnica, auditoría semanal, extracción de 10.000 remitos históricos.</li>
+<li><strong>Sincrónica:</strong> el check pre-merge que bloquea al dev, el chatbot, cualquier cosa con un humano esperando.</li>
+</ul>
+<h3>Fallas y SLA</h3>
+<ul class="tight">
+<li>Si fallan 30 de 1.000, reenviás <strong>solo esas 30</strong> (las identificás por <code>custom_id</code>), con el ajuste que haga falta (p. ej. partir un documento que excedió el contexto).</li>
+<li>Antes de mandar el volumen grande, <strong>refiná el prompt con una muestra</strong>: cada error en el batch grande es plata y un día de espera.</li>
+<li>Cálculo de la guía: si tu SLA es 30 h y el batch puede tardar 24 h, tenés que enviar como máximo cada <strong>4 h</strong> lo acumulado, porque un documento puede esperar hasta 4 h el próximo envío más 24 h de proceso (= 28 h, dentro del SLA con margen).</li>
+</ul>
+<div class="callout trap"><span class="label">Trampa del día (Q11 de la guía)</span>
+<p>“Pasemos todo a Batches por el 50%”. El check pre-merge es <strong>bloqueante</strong>: el dev no puede esperar hasta 24 h. Tampoco sirve “Batches con fallback a sincrónico si tarda”: complejidad innecesaria. Cada workflow con la API que corresponde a su latencia.</p></div>
+
+<h2>5 · Quiz (escenarios tipo examen)</h2>
+<div class="quiz" data-src="quiz-0004"></div>
+<script type="application/json" id="quiz-0004">[
+{"q":"Tu extractor de facturas a veces devuelve una fecha de vencimiento aunque la factura no la tenga. El campo es <code>string</code> requerido. ¿Qué cambiás?",
+ "options":["Hacer el campo nullable en el schema","Agregar “no inventes” en mayúsculas","Reintentar hasta que venga vacío","Bajar la temperatura del request"],"answer":0,
+ "why":"Si el schema no permite null, Claude tiene que llenar el campo. Nullable le da una salida válida para “no está”."},
+{"q":"Llegan facturas, remitos y órdenes de compra mezclados. Hay un schema (tool) por tipo. ¿Qué <code>tool_choice</code>?",
+ "options":["any, para que elija el schema adecuado","auto, para que decida si extraer o no","tool, forzando siempre el de facturas","none, y parsear el texto de salida"],"answer":0,
+ "why":"4.3: <code>any</code> garantiza que use alguna tool cuando no sabés qué documento llega."},
+{"q":"La extracción pasa el schema pero las líneas suman 35 y el total dice 40. ¿Qué es?",
+ "options":["Un error semántico que valida tu código","Un error de sintaxis que evita el schema","Un problema que strict: true resuelve","Una falla de la API que hay que reportar"],"answer":0,
+ "why":"Los schemas eliminan errores de sintaxis, no semánticos. calculated_total vs stated_total."},
+{"q":"La validación falla porque falta el CUIT, y el CUIT está en un anexo que no le enviaste. ¿Qué hacés?",
+ "options":["No reintentar: el dato no está en la fuente","Reintentar con el error como feedback","Reintentar tres veces y tomar el mayoritario","Hacer el campo requerido para forzarlo"],"answer":0,
+ "why":"Los reintentos no sirven si la información está ausente del documento provisto (4.4)."},
+{"q":"El reporte de deuda técnica se lee a la mañana; el check pre-merge bloquea el merge. Te proponen pasar ambos a Batches. ¿Qué respondés?",
+ "options":["Batches solo para el reporte nocturno","Batches para ambos con polling de estado","Ambos sincrónicos por el orden de resultados","Batches para ambos con fallback a sincrónico"],"answer":0,
+ "why":"Q11 de la guía: sin SLA, Batches no sirve para flujos bloqueantes. El orden se resuelve con custom_id."},
+{"q":"De un batch de 1.000 documentos, 30 vuelven <code>errored</code> por exceder el contexto. ¿Qué hacés?",
+ "options":["Reenviar solo esos 30, partidos en chunks","Reenviar el batch completo de 1.000 de nuevo","Pasar esos 30 a un modelo más grande igual","Descartarlos y reportar el 97% procesado"],"answer":0,
+ "why":"Identificás los fallidos por custom_id y los reenviás con la modificación que resuelve la causa."}
+]</script>
+
+<h2>6 · Lab (30 min): completar huecos</h2>
+<p>En <a href="../labs/04-structured-output/README.md"><code>labs/04-structured-output/</code></a>, abrí <code>extractor.py</code>:</p>
+<ol class="steps">
+<li><strong>Schema</strong>: campo nullable, <code>"otro"</code> en el enum y su detalle (sección 2).</li>
+<li><strong>Validación semántica</strong>: ¿cierran los m3? (sección 3).</li>
+<li><strong>Reintentos</strong>: qué sirve reintentar y las 3 piezas del mensaje (sección 3).</li>
+</ol>
+<p>Corré <code>python check.py</code> hasta <strong>14/14</strong>. Guardá con <code>Ctrl+S</code> antes de cada corrida.</p>
+
+<h2>7 · Cierre (10 min)</h2>
+<ul class="tight">
+<li>Preguntas de cierre que te paso yo.</li>
+<li>Errores del quiz a <code>errores.md</code>.</li>
+<li>Commit: <code>Día 04: lab salida estructurada, closes #9</code>.</li>
+</ul>
+
+<div class="callout"><span class="label">Preguntá</span>
+<p>Si algo no cierra, preguntale a tu agente: es tu profe.</p></div>
+
+<footer class="lesson"><nav>
+<a href="../reference/salida-estructurada.html">Referencia: salida estructurada y Batches</a>
+<a href="../reference/glosario.html">Glosario</a>
+</nav></footer>
+</main>
+<script src="../assets/quiz.js"></script>
+</body></html>

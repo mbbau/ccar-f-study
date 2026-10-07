@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Referencia · Salida estructurada</title><link rel="stylesheet" href="../assets/style.css"></head>
+<body><main>
+<header class="lesson"><div class="kicker">Referencia · D4</div><h1>Salida estructurada y Batches</h1>
+<p class="subtitle">Ficha rápida. Lección: <a href="../lessons/0004-salida-estructurada-y-batches.html">0004</a>.</p></header>
+
+<h2>Salida estructurada (4.3)</h2>
+<ul class="tight">
+<li>Tool cuyo <code>input_schema</code> es el formato → leer <code>tool_use.input</code>.</li>
+<li><code>any</code>: varios schemas, documento desconocido · <code>tool</code>: esa extracción sí o sí · <code>auto</code>: puede responder texto.</li>
+<li>API actual (Opus/Sonnet 5.5): <code>any</code>/<code>tool</code> → 400; usar <code>auto</code> + <code>strict: true</code> o <code>output_config.format</code>.</li>
+<li>Nullable (<code>["string","null"]</code>) si el dato puede faltar → evita inventos.</li>
+<li>Enum + <code>"other"</code> + campo detalle; <code>"unclear"</code> para ambiguos.</li>
+</ul>
+
+<h2>Validación (4.4)</h2>
+<div class="table-wrap"><table>
+<tr><th>Error</th><th>Lo evita el schema</th><th>Reintentar</th></tr>
+<tr><td>Sintaxis JSON</td><td>Sí</td><td>—</td></tr>
+<tr><td>Semántico (no suma, campo equivocado)</td><td>No</td><td>Sí, con feedback</td></tr>
+<tr><td>Formato</td><td>No</td><td>Sí</td></tr>
+<tr><td>Dato ausente de la fuente</td><td>No</td><td><strong>No</strong></td></tr>
+</table></div>
+<p>Reintento = documento + extracción fallida + error específico.</p>
+
+<h2>Message Batches (4.5)</h2>
+<ul class="tight">
+<li>−50% · hasta 24 h · sin SLA · <code>custom_id</code> (orden no garantizado).</li>
+<li>Sí: nocturno, semanal, histórico. No: bloqueante (pre-merge), humano esperando.</li>
+<li>Sin loop con client tools dentro de un request.</li>
+<li>Fallas: reenviar solo los fallidos por <code>custom_id</code>, con la corrección.</li>
+<li>SLA: frecuencia de envío = SLA − 24 h (o menos).</li>
+<li>Refinar el prompt con una muestra antes del volumen.</li>
+</ul>
+<p class="sidenote">Fuentes: <a href="https://platform.claude.com/docs/en/build-with-claude/structured-outputs">Structured outputs</a> · <a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use">Strict tool use</a> · <a href="https://platform.claude.com/docs/en/build-with-claude/batch-processing">Batch processing</a> · Guía 4.3–4.5, Q11.</p>
+</main></body></html>

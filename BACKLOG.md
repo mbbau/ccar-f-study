@@ -1,6 +1,6 @@
 # Backlog — Certificación CCAR-F
 
-**Última actualización:** 2026-10-07 (Día 03 hecho; Día 04 más tarde hoy)
+**Última actualización:** 2026-10-07 (Días 03 y 04 hechos; Día 05 pendiente)
 **Examen:** mar 27/10/2026 · meta ≥ 800/1000 (corte 720)
 
 > Resumen del día a día: qué hicimos, qué toca hoy y qué falta. Claude lo lee al arrancar
@@ -18,7 +18,7 @@
 - [x] Repregunta de arranque: formato de `tool_result` (`role: "user"` + bloque `tool_result` + `tool_use_id` = `block.id`)
 - [x] Commitear los cambios del cierre del Día 02 (`NOTES.md`, `errores.md`)
 - [x] **Día 03** · System prompts y few-shot (#8): lección y quizzes OK (6/6) · lab 17/17 · cierre 3/3 (falta el nombre exacto `tool_result`/`tool_use_id`) · commit hecho
-- [ ] **Día 04** · Salida estructurada y Message Batches (#9)
+- [x] **Día 04** · Salida estructurada y Message Batches (#9): quiz 5/6, lab 14/14, cierre 3/3
 - [ ] **Día 05** · Ventana de contexto y lost in the middle (#11). Reforzar "¿qué ve Claude?" (falló la pregunta 3 del Día 02)
 
 ## 📅 Plan de recuperación (hasta el Día 10)
@@ -57,10 +57,14 @@ Desde el lun 12/10 se vuelve a 1 día de plan por día hábil (Día 11 → Día 
 ## 🎯 Puntos flojos a vigilar
 
 - Formato de `tool_result`: lo confundió con `tool_choice: any` (6/10) y con el historial (7/10). Repreguntar hasta que salga solo.
+- `tool_choice`: a la mañana confundía `any`/`tool` y olvidaba `auto`; en el cierre del Día 04 dijo los cuatro bien. Repreguntar espaciado.
+- JSON Schema: `type` (clase de dato) vs. valor de `enum`; no existe type fecha.
 - Dónde va `system` (parámetro de primer nivel, no un mensaje): no lo recordó el 7/10.
 - Ponerse en el lugar de Claude: solo sabe lo que la tool le devuelve (una falla disfrazada de "0 filas" produce una respuesta falsa).
 
 ## ✅ Hecho
+
+- **mié 07/10** — Día 04 · Salida estructurada y Message Batches (#9): lección (repaso 2/2, quiz 5/6: falló Q11), lab 14/14 en 2 iteraciones, cierre 3/3.
 
 - **mié 07/10** — Día 03 · System prompts y few-shot (#8): lección (quizzes 6/6 y 2/2), lab 17/17 en 4 iteraciones, cierre 3/3, learning record 0002.
 

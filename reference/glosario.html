@@ -29,5 +29,12 @@
 <tr><td>false positive</td><td>Hallazgo reportado que no era un problema. Una categoría ruidosa erosiona la confianza en todas.</td><td>0003</td></tr>
 <tr><td>precision / recall</td><td>Precisión: cuántos reportes eran reales. Recall: cuántos problemas reales se reportaron.</td><td>0003</td></tr>
 <tr><td>XML tags</td><td>Delimitadores (<code>&lt;criterios&gt;</code>, <code>&lt;example&gt;</code>) que separan instrucciones, ejemplos y entrada variable.</td><td>0003</td></tr>
+<tr><td>structured outputs</td><td>Salida que cumple un JSON Schema. Vía tool (<code>input_schema</code>) o <code>output_config.format</code>; garantizada con constrained decoding.</td><td><a href="../lessons/0004-salida-estructurada-y-batches.html">0004</a></td></tr>
+<tr><td>strict tool use</td><td><code>strict: true</code> en una tool: el input cumple el schema siempre.</td><td>0004</td></tr>
+<tr><td>nullable field</td><td>Campo que admite <code>null</code> (<code>["string","null"]</code>) para que el modelo no invente un dato ausente.</td><td>0004</td></tr>
+<tr><td>semantic error</td><td>Salida con forma válida pero contenido incorrecto (no suma, campo equivocado). El schema no lo evita.</td><td>0004</td></tr>
+<tr><td>retry-with-error-feedback</td><td>Reintento que incluye documento, extracción fallida y error específico.</td><td>0004</td></tr>
+<tr><td>Message Batches API</td><td>Procesamiento asíncrono: −50%, hasta 24 h, sin SLA, resultados por <code>custom_id</code>.</td><td>0004</td></tr>
+<tr><td>custom_id</td><td>Id por request de un batch para correlacionar resultados (el orden no está garantizado).</td><td>0004</td></tr>
 </table></div>
 </main></body></html>

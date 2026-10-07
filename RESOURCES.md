@@ -45,6 +45,15 @@ Fuentes oficiales y verificables para preparar la certificación Claude Certifie
 - [anthropics/claude-code-security-review · prompts.py](https://github.com/anthropics/claude-code-security-review/blob/main/claudecode/prompts.py)
   Prompt real de revisión con listas explícitas de exclusiones para minimizar falsos positivos.
 
+### D4 (guía) · Salida estructurada y Batches
+
+- [Docs: Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
+  JSON outputs (`output_config.format`) y strict tool use; qué garantiza, límites del schema. **Fuente primaria del Día 04.**
+- [Docs: Strict tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use)
+  `strict: true`: el input de la tool cumple el schema siempre.
+- [Docs: Batch processing](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
+  Message Batches: −50%, hasta 24 h, `custom_id`, tipos de resultado, 29 días de retención.
+
 ### D2 · Claude Code: configuración y workflows (20%)
 
 - [Claude Code Docs: Overview](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview)
