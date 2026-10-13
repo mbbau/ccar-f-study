@@ -36,5 +36,11 @@
 <tr><td>retry-with-error-feedback</td><td>Reintento que incluye documento, extracción fallida y error específico.</td><td>0004</td></tr>
 <tr><td>Message Batches API</td><td>Procesamiento asíncrono: −50%, hasta 24 h, sin SLA, resultados por <code>custom_id</code>.</td><td>0004</td></tr>
 <tr><td>custom_id</td><td>Id por request de un batch para correlacionar resultados (el orden no está garantizado).</td><td>0004</td></tr>
+<tr><td>context window</td><td>Todo lo que el modelo puede leer al generar una respuesta (<code>tools</code>, <code>system</code>, <code>messages</code> y la respuesta). Ventana de contexto.</td><td><a href="../lessons/0005-ventana-de-contexto.html">0005</a></td></tr>
+<tr><td>context rot</td><td>Degradación de precisión y recall a medida que crece la cantidad de tokens en la ventana de contexto.</td><td>0005</td></tr>
+<tr><td>lost in the middle</td><td>Efecto por el que el modelo procesa bien el principio y el final de un input largo y puede omitir lo del medio.</td><td>0005</td></tr>
+<tr><td>case facts block</td><td>Bloque persistente con datos transaccionales (montos, fechas, ids, expectativas del cliente) que va textual en cada request, fuera del historial resumido.</td><td>0005</td></tr>
+<tr><td>prompt caching</td><td>Reutilización del prefijo de un request (<code>tools</code> → <code>system</code> → <code>messages</code>) hasta un breakpoint; baja costo y latencia, no la ventana de contexto.</td><td>0005</td></tr>
+<tr><td>cache_control</td><td>Marca en un bloque (<code>{"type": "ephemeral"}</code>) que fija el breakpoint del prompt caching; TTL de 5 min por defecto o 1 h.</td><td>0005</td></tr>
 </table></div>
 </main></body></html>

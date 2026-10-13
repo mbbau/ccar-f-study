@@ -77,8 +77,14 @@ Fuentes oficiales y verificables para preparar la certificación Claude Certifie
 
 ### D5 · Contexto, confiabilidad y escalado a humanos (15%)
 
-- [Docs: Prompt Caching](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching)
-  (También relevante para D5.) Estrategias de manejo de contexto largo y reducción de costos.
+- [Docs: Context windows](https://platform.claude.com/docs/en/build-with-claude/context-windows)
+  Qué cuenta en la ventana, cómo crece el historial, *context rot* ("more context isn't automatically better"), compaction y que el cache no libera ventana. **Fuente primaria del Día 05.**
+- [Docs: Prompting best practices · Long context prompting](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#long-context-prompting)
+  Documentos largos arriba y la pregunta al final (hasta +30% en pruebas), XML por documento, pedir citas primero. Use for: lost in the middle.
+- [Anthropic Engineering: Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
+  Por qué los contextos largos degradan y cómo curarlos (compaction, notas, subagentes). Use for: 5.1, 5.4 y puente al Día 06.
+- [Docs: Prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+  `cache_control`, orden `tools` → `system` → `messages`, TTL 5 min / 1 h, mínimos por modelo, qué invalida el cache. Para el examen solo "saber que existe" (Out-of-Scope de la guía); útil en el trabajo.
 
 ## Gaps
 

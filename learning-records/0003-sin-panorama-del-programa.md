@@ -1,0 +1,7 @@
+# Le faltaba el panorama: el agente es su programa más una llamada a la API
+
+En la lección 0005 Matías sacó 7/7 en el quiz, pero dijo que no había entendido la clase: no sabía cuándo se usa esto, quién arma el sistema ni si era "una llamada a la API". Nunca había hecho una llamada real (todos los labs corren con mock y el SDK `anthropic` no está instalado), así que `tool_result`, cache y "respuesta" eran palabras sueltas. Lo destrabó el diagrama "tu programa arma el request → `messages.create` → Claude devuelve `tool_use` → tu código ejecuta → `tool_result` → repetir", con Claude Code como ejemplo vivo de ese programa.
+
+**Evidence:** calentamiento del 13/10, tras 5 días de pausa: perdió `model`, `max_tokens` y `messages` del request (el 8/10 los tenía) y volvió a usar `error_message`; JSON Schema nullable ✔. Lab 05: 17/17 en 4 corridas. Con pistas en el 3a (qué bloque se cachea): primero propuso `model`; acertó cuando se le planteó "¿qué no cambia en la segunda pregunta?". Cierre: 1 ✔, 2 ~, 3 ½ (no dio la razón del cache). No contestó la repregunta del request.
+
+**Implications:** un quiz de reconocimiento no prueba comprensión: pedir explicaciones abiertas ("¿por qué?") y producción (escribir el JSON). Anclar cada tema nuevo en el diagrama del programa (en qué paso del loop vive). Hacer cuanto antes una llamada real con el SDK (requiere API key de la Console). Con el examen adelantado al 23/10 hay menos espacio para repetir: priorizar comprensión sobre cobertura.

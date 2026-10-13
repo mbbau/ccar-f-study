@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Referencia · Ventana de contexto</title><link rel="stylesheet" href="../assets/style.css"></head>
+<body><main>
+<header class="lesson"><div class="kicker">Referencia · D5</div><h1>Ventana de contexto</h1>
+<p class="subtitle">Ficha rápida. Lección: <a href="../lessons/0005-ventana-de-contexto.html">0005</a>.</p></header>
+
+<h2>Qué ve Claude</h2>
+<ul class="tight">
+<li>Solo el request: <code>tools</code> + <code>system</code> + <code>messages</code> (historial completo, con <code>tool_result</code>). Lo que no está, no existe.</li>
+<li>Más contexto ≠ mejor: <em>context rot</em> (cae precisión y recall), más costo, más latencia.</li>
+</ul>
+
+<h2>Preservar lo crítico (5.1)</h2>
+<div class="table-wrap"><table>
+<tr><th>Problema</th><th>Skill</th></tr>
+<tr><td>El resumen vuelve vagos montos, fechas, expectativas</td><td><strong>Case facts block</strong> textual en cada request, fuera del resumen; capa estructurada por tema si hay varios</td></tr>
+<tr><td><code>tool_result</code> de 40+ campos, 5 relevantes</td><td>Recortar a los campos relevantes <em>antes</em> de agregarlo al historial</td></tr>
+<tr><td>Lost in the middle</td><td>Documentos largos arriba, pregunta al final (hasta +30%); en inputs agregados, resumen de hallazgos arriba + secciones con encabezados</td></tr>
+<tr><td>Agente de abajo con poco presupuesto</td><td>Los de arriba devuelven datos estructurados (hechos, citas, fecha, fuente), no razonamientos largos</td></tr>
+</table></div>
+
+<h2>Exploración larga (5.4)</h2>
+<ul class="tight">
+<li>Síntoma de degradación: respuestas inconsistentes, “typical patterns” en vez de clases concretas.</li>
+<li>Scratchpad de hallazgos · subagentes para aislar output verboso · resumen entre fases · manifest de estado para retomar · <code>/compact</code>.</li>
+</ul>
+
+<h2>Prompt caching (examen: saber que existe)</h2>
+<ul class="tight">
+<li><code>"cache_control": {"type": "ephemeral"}</code> en el último bloque estable. Render: <code>tools</code> → <code>system</code> → <code>messages</code>.</li>
+<li>Prefix match: un byte distinto invalida todo lo que sigue. Lo estable primero; fechas e ids variables, después.</li>
+<li>TTL 5 min (se renueva con cada lectura) o <code>"ttl": "1h"</code> · máx. 4 breakpoints · mínimo de tokens según modelo (si no llega, no cachea, sin error).</li>
+<li>Cambia el precio, no la ventana: el prefijo cacheado sigue ocupando contexto.</li>
+</ul>
+<p class="sidenote">Fuentes: <a href="https://platform.claude.com/docs/en/build-with-claude/context-windows">Context windows</a> · <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#long-context-prompting">Long context prompting</a> · <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Prompt caching</a> · Guía 5.1, 5.4 y Out-of-Scope.</p>
+</main></body></html>

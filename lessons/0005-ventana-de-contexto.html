@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>0005 · Ventana de contexto</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head><body><main>
+
+<header class="lesson">
+  <div class="kicker">Día 05 · Jue 8/10 · Issue #11 · Guía: task statements 5.1 y 5.4</div>
+  <h1>Ventana de contexto y lost in the middle</h1>
+  <p class="subtitle">Claude no recuerda nada: solo lee lo que le mandás. Tu trabajo es elegir qué entra, en qué orden y qué no se puede resumir.</p>
+  <p class="meta">Antes: <a href="0004-salida-estructurada-y-batches.html">0004</a> · Después: Día 06 (subagentes) · ≈ 40 min de estudio + 30 min de lab · Fuentes primarias: <a href="https://platform.claude.com/docs/en/build-with-claude/context-windows">Context windows</a> · <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#long-context-prompting">Long context prompting</a></p>
+</header>
+
+<h2>0 · Repaso (5 min)</h2>
+<p>Primero, de memoria. Es el punto que falló dos veces: <code>system</code> y los resultados en paralelo.</p>
+<div class="recall" data-terms="system,messages,role,tool_use,tool_result,tool_use_id" data-prompt="Sin mirar: escribí el esqueleto JSON del request que mandás después de que Claude pidió dos tools en paralelo. Con el system, el mensaje del usuario, el turno del assistant y tu respuesta."></div>
+<div class="quiz" data-src="repaso-0004"></div>
+<script type="application/json" id="repaso-0004">[
+{"q":"Claude devolvió dos bloques <code>tool_use</code> en un turno. ¿Qué agregás a <code>messages</code>?",
+ "options":["Un mensaje user con dos tool_result","Dos mensajes user con un resultado","Un assistant con los dos resultados","Un request aparte por cada tool_use"],"answer":0,
+ "why":"Un turno = un mensaje. Adentro, un bloque <code>tool_result</code> por cada <code>tool_use</code>, cada uno con su <code>tool_use_id</code>."},
+{"q":"Los resultados de un batch llegan en otro orden. ¿Cómo los correlacionás?",
+ "options":["Por el custom_id de cada request","Por la posición dentro del archivo","Por el timestamp de cada resultado","Por el id del mensaje generado"],"answer":0,
+ "why":"Día 04: el orden no está garantizado; cada request lleva su <code>custom_id</code>."}
+]</script>
+
+<div class="callout win"><span class="label">El logro de hoy</span>
+<p>Armar el request para preguntarle a Claude por un modelo TMDL: hechos que no se pierden al resumir, un <code>tool_result</code> recortado, el documento arriba, la pregunta abajo y el cache donde corresponde. En el lab: 17/17 en <code>labs/05-contexto/check.py</code>.</p></div>
+
+<h2>1 · ¿Qué ve Claude? Solo el request</h2>
+<p>La <strong>ventana de contexto</strong> es todo lo que el modelo puede leer al generar una respuesta, incluida la respuesta misma: su “memoria de trabajo” (<a href="https://platform.claude.com/docs/en/build-with-claude/context-windows#how-the-context-window-works">Context windows</a>). Cuenta todo lo que mandás: el <code>system</code>, las <code>tools</code> y cada mensaje de <code>messages</code>, con sus <code>tool_result</code>.</p>
+<div class="flow">
+<span class="node hot">tools</span><span class="arrow">→</span><span class="node hot">system</span><span class="arrow">→</span><span class="node hot">messages (historial completo)</span><span class="arrow">→</span><span class="node">respuesta</span>
+</div>
+<p>Como la API es stateless, el historial crece en cada turno y se reenvía entero. Lo que no está en el request <strong>no existe</strong> para Claude. Es el mismo error del Día 02 (“Claude sabe que hubo un timeout”): si no se lo mandás, no lo sabe.</p>
+
+<div class="callout trap"><span class="label">Trampa del día</span>
+<p>“Los modelos actuales tienen 1M de tokens: metamos todo por las dudas.” La doc lo dice explícito: <em>“more context isn't automatically better. As token count grows, accuracy and recall degrade, a phenomenon known as context rot”</em> (<a href="https://platform.claude.com/docs/en/build-with-claude/context-windows#how-the-context-window-works">Context windows</a>). Más contexto también es más costo y más latencia en cada request. Curar el contexto importa tanto como su tamaño.</p></div>
+
+<h2>2 · Los tool_result se acumulan: recortalos</h2>
+<p>La guía (5.1) da el caso típico: una tool de pedidos que devuelve <strong>40+ campos</strong> cuando solo <strong>5</strong> son relevantes. Ese resultado queda en el historial y se reenvía en todos los turnos que siguen, ocupando tokens <em>“disproportionately to their relevance”</em>.</p>
+<p><strong>La skill:</strong> recortar el resultado a los campos que importan <em>antes</em> de agregarlo al historial. Si la pregunta es sobre devoluciones, te quedás con los campos de devolución. Lo hace tu código, entre la tool y el <code>tool_result</code>.</p>
+<p class="sidenote">Ya lo viste del lado del diseño de tools: <em>“Return only high-signal information”</em> (<a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Writing effective tools for agents</a>, y la lección <a href="0002-diseno-de-tools.html">0002</a>).</p>
+
+<h2>3 · Resumir sin perder: los hechos del caso</h2>
+<p>En sesiones largas resumís el historial viejo para liberar espacio. El riesgo (5.1): el resumen progresivo convierte <em>“numerical values, percentages, dates, and customer-stated expectations”</em> en frases vagas. “$1.250.430 contra $1.310.000” pasa a ser “hay una diferencia en ventas”.</p>
+<p><strong>La skill:</strong> extraer los datos transaccionales (montos, fechas, ids, estados, lo que el cliente dijo que espera) a un bloque persistente de <strong>hechos del caso</strong> que va en cada request, <em>fuera</em> del historial resumido. Si hay varios temas abiertos en la misma sesión, una capa de datos estructurados por tema (id, monto, estado).</p>
+<div class="table-wrap"><table>
+<tr><th>Va a los hechos (textual)</th><th>Se puede resumir</th></tr>
+<tr><td>“Lo necesita antes del 2026-11-13”</td><td>Saludos, agradecimientos</td></tr>
+<tr><td>“$1.250.430 vs. $1.310.000 del ERP”</td><td>Explicaciones que Claude ya dio</td></tr>
+<tr><td>“Partición <code>fVentas-2026-10</code>”</td><td>Razonamiento intermedio ya resuelto</td></tr>
+</table></div>
+
+<h2>4 · Lost in the middle: el orden importa</h2>
+<p>La guía (5.1): los modelos procesan bien lo que está al <strong>principio</strong> y al <strong>final</strong> de un input largo, y pueden omitir lo que queda en el medio. Dos reglas prácticas:</p>
+<ol class="steps">
+<li><strong>Documentos largos arriba, pregunta abajo.</strong> La doc de Anthropic: poné los documentos largos <em>“near the top of your prompt, above your query, instructions, and examples”</em>; la pregunta al final <em>“can improve response quality by up to 30 percent in tests”</em> (<a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#long-context-prompting">Long context prompting</a>). Envolvé cada documento en XML tags, como en la lección <a href="0003-system-prompts-y-few-shot.html">0003</a>.</li>
+<li><strong>Inputs agregados: resumen al principio.</strong> Si un coordinador junta los resultados de seis subagentes, poné un resumen de hallazgos clave al <em>principio</em> y organizá el detalle con encabezados de sección explícitos (guía 5.1).</li>
+</ol>
+
+<h2>5 · Prompt caching (para el examen: saber que existe)</h2>
+<p>La guía lo deja fuera de alcance salvo saber que existe (<em>“Prompt caching implementation details (beyond knowing it exists)”</em>). Lo vemos corto porque ordena lo de la sección 4 y te va a servir en el trabajo.</p>
+<ul class="tight">
+<li>Marcás un bloque con <code>"cache_control": {"type": "ephemeral"}</code>. Todo lo anterior a ese punto (el <strong>prefijo</strong>) se guarda y el request siguiente lo lee más barato.</li>
+<li>Orden de render: <code>tools</code> → <code>system</code> → <code>messages</code>. Cualquier cambio en un byte del prefijo invalida el cache desde ahí hacia adelante.</li>
+<li>Por eso: lo estable primero (el TMDL) y lo que cambia después (hechos, pregunta). Un “Fecha: {ahora}” en el <code>system</code> rompe el cache en cada request.</li>
+<li>Dura 5 minutos por defecto (cada lectura lo renueva), o 1 hora con <code>"ttl": "1h"</code>. Hasta 4 breakpoints por request. Debajo de un mínimo de tokens (depende del modelo) no se cachea, sin error.</li>
+<li>El cache cambia lo que pagás, no la ventana: el prefijo cacheado <strong>sigue ocupando contexto</strong> (<a href="https://platform.claude.com/docs/en/build-with-claude/context-windows#manage-context-with-compaction">Context windows</a>).</li>
+</ul>
+<p class="sidenote">Detalle de precios, mínimos por modelo y lo que invalida cada nivel: <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Prompt caching</a>.</p>
+
+<h2>6 · Sesiones largas y aislamiento de contexto (5.4)</h2>
+<p>En exploraciones largas (un codebase, un modelo con 80 tablas) el contexto se degrada: el modelo empieza a dar respuestas inconsistentes y a hablar de <em>“typical patterns”</em> en vez de las clases concretas que encontró antes (guía 5.4). Las herramientas:</p>
+<div class="table-wrap"><table>
+<tr><th>Herramienta</th><th>Cuándo</th></tr>
+<tr><td><strong>Scratchpad</strong> (archivo de hallazgos)</td><td>Persistir lo encontrado y consultarlo después, en lugar de confiar en el historial.</td></tr>
+<tr><td><strong>Subagentes</strong></td><td>Aislar exploración verbosa (“encontrá todos los tests”): el subagente lee mucho y devuelve poco; el agente principal conserva la visión general.</td></tr>
+<tr><td><strong>Resumen entre fases</strong></td><td>Antes de lanzar la siguiente fase, resumir los hallazgos y pasarlos en el contexto inicial.</td></tr>
+<tr><td><strong>Manifest de estado</strong></td><td>Recuperación ante caídas: cada agente exporta su estado y el coordinador lo carga al retomar.</td></tr>
+<tr><td><strong><code>/compact</code></strong></td><td>En Claude Code, cuando el contexto se llenó de output de exploración.</td></tr>
+</table></div>
+<p>Y del lado de quien envía (5.1): si el agente de abajo tiene poco presupuesto de contexto, los de arriba devuelven <strong>datos estructurados</strong> (hechos clave, citas, fecha, fuente) en lugar de razonamientos largos. Es la base del Día 06: un subagente es, ante todo, <strong>un contexto aparte</strong>.</p>
+
+<h2>7 · Quiz (escenarios tipo examen)</h2>
+<div class="quiz" data-src="quiz-0005"></div>
+<script type="application/json" id="quiz-0005">[
+{"q":"Un agente de soporte resume el historial cada 10 turnos. Después del resumen ofrece reintegrar “unos $100”, pero el cliente había dicho $137,50 y que lo necesitaba antes del viernes. ¿Qué cambiás?",
+ "options":["Hechos del caso fuera del resumen","Resumir con más detalle cada vez","Usar un modelo con más contexto","Pedir al cliente que repita montos"],"answer":0,
+ "why":"5.1: montos, fechas y expectativas del cliente van a un bloque persistente, fuera del historial resumido."},
+{"q":"<code>get_pedido</code> devuelve 45 campos y para devoluciones importan 5. A los 15 turnos el agente está lento y caro. ¿Qué hacés?",
+ "options":["Recortar el resultado a lo relevante","Usar un modelo de mayor contexto","Cachear los resultados de cada tool","Pedirle a Claude que ignore ruido"],"answer":0,
+ "why":"5.1: recortar los tool outputs antes de que se acumulen. Pedirle que ignore no saca los tokens del request."},
+{"q":"Un coordinador concatena los informes de seis subagentes. El reporte final omite casi siempre lo de los informes 3 y 4. ¿Qué cambiás?",
+ "options":["Resumen clave arriba y secciones explícitas","Duplicar los informes del medio siempre","Ordenar los informes por orden alfabético","Subir el max_tokens del reporte final"],"answer":0,
+ "why":"Lost in the middle (5.1): resumen de hallazgos al principio y detalle con encabezados explícitos."},
+{"q":"Le pasás un TMDL de 60.000 tokens y una pregunta sobre una medida. ¿Cómo armás el mensaje?",
+ "options":["TMDL arriba y la pregunta al final","Pregunta arriba y el TMDL al final","Pregunta en system y TMDL en messages","TMDL partido en tres mensajes de user"],"answer":0,
+ "why":"Long context prompting: documentos largos arriba; la pregunta al final mejora la respuesta (hasta 30% en las pruebas de Anthropic)."},
+{"q":"Tras dos horas explorando un codebase, el agente habla de “patrones típicos” y no de las clases que encontró. ¿Qué proponés?",
+ "options":["Scratchpad de hallazgos y usar subagentes","Subir max_tokens y seguir en sesión","Reiniciar la sesión sin guardar nada","Releer todos los archivos desde cero"],"answer":0,
+ "why":"5.4: degradación de contexto. Persistir hallazgos en un scratchpad y delegar la exploración verbosa a subagentes."},
+{"q":"Te proponen cargar los 300 modelos TMDL de todos los clientes “por las dudas”, porque entran en 1M de tokens y el prefijo se cachea. ¿Qué respondés?",
+ "options":["No: más tokens degradan la precisión","Sí: entran en la ventana grande","Sí: con cache salen casi gratis","No: el límite real es 200k"],"answer":0,
+ "why":"Context rot: más contexto no es mejor. Y el cache baja el precio, pero el prefijo sigue ocupando la ventana."},
+{"q":"El system es fijo y largo, pero empieza con “Fecha y hora: {ahora}”. <code>cache_read_input_tokens</code> da siempre 0. ¿Por qué?",
+ "options":["La fecha cambia el prefijo siempre","El system nunca se puede cachear","Falta un cache_control en cada mensaje","El cache solo funciona con Batches"],"answer":0,
+ "why":"El cache es un prefix match: un byte distinto al principio invalida todo lo que sigue. Lo variable va después."}
+]</script>
+
+<h2>8 · Lab (30 min): completar huecos</h2>
+<p>En <a href="../labs/05-contexto/README.md"><code>labs/05-contexto/</code></a>, abrí <code>contexto.py</code> (y leé <code>datos.py</code>):</p>
+<ol class="steps">
+<li><strong>Hechos del caso</strong>: qué va textual y qué se puede resumir (sección 3).</li>
+<li><strong>Recortar el <code>tool_result</code></strong>: qué campos necesita la pregunta (sección 2).</li>
+<li><strong>Armar el request</strong>: dónde va el <code>system</code>, el orden de los bloques y cuál lleva <code>cache_control</code> (secciones 1, 4 y 5).</li>
+</ol>
+<p>Corré <code>python check.py</code> hasta <strong>17/17</strong> y después <code>python contexto.py</code> para ver el request. Guardá con <code>Ctrl+S</code> antes de cada corrida.</p>
+
+<h2>9 · Cierre (10 min)</h2>
+<ul class="tight">
+<li>Preguntas de cierre que te paso yo.</li>
+<li>Errores del quiz a <code>errores.md</code>.</li>
+<li>Commit: <code>Día 05: lab ventana de contexto, closes #11</code>.</li>
+</ul>
+
+<div class="callout"><span class="label">Para leer (fuente primaria)</span>
+<p><a href="https://platform.claude.com/docs/en/build-with-claude/context-windows">Context windows</a>: corta y directa (10 min). Si te queda tiempo: <a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">Effective context engineering for AI agents</a>, que conecta esto con los subagentes del Día 06.</p></div>
+
+<div class="callout"><span class="label">Preguntá</span>
+<p>Si algo no cierra, preguntale a tu agente: es tu profe.</p></div>
+
+<footer class="lesson"><nav>
+<a href="../reference/contexto.html">Referencia: ventana de contexto</a>
+<a href="../reference/messages-api.html">Messages API</a>
+<a href="../reference/glosario.html">Glosario</a>
+</nav></footer>
+</main>
+<script src="../assets/quiz.js"></script>
+</body></html>
