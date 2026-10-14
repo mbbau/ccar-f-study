@@ -57,10 +57,14 @@ comprensión sobre cobertura: cada tema se ancla en el programa real (`messages.
 | jue 15/10 | 08 (transportes MCP) · 09 (lab integrador MCP) |
 | vie 16/10 | 10 (repaso + cuestionario ronda 1) · 11 (CLAUDE.md) |
 | lun 19/10 | 12 (commands/skills/CI) · 13 (human-in-the-loop) · 14 (provenance) |
-| mar 20/10 | 15 (distractores) · 16 (bloque D1 + D2) |
+| mar 20/10 | 15 (distractores) · **mock exam** (#22, quick ~28 preg / 56 min) · 16 (bloque D1 + D2) |
 | mié 21/10 | 17 (bloque D3 + D4) · 18 (bloque D5) |
 | jue 22/10 | 19 (video + ficha de trade-offs) · 20 (simulacro final) |
 | **vie 23/10** | **Examen** |
+
+> **Mock exam (#22):** [claudecertificationguide.com/mock-exam](https://claudecertificationguide.com/mock-exam/start), no oficial.
+> Quick mock el 20/10 como diagnóstico con toda la teoría vista; los dominios flojos definen el foco de los Días 16–18.
+> La versión full (60 preg / 120 min) queda como opción para el simulacro del Día 20.
 
 ### Historial del plan de recuperación (6–9/10)
 
