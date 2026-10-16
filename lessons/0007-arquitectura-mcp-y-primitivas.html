@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>0007 · Arquitectura MCP y primitivas</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head><body><main>
+
+<header class="lesson">
+  <div class="kicker">Día 07 · Vie 16/10 · Issue #4 · Guía: task statement 2.4</div>
+  <h1>Arquitectura MCP y primitivas</h1>
+  <p class="subtitle">MCP saca las tools de tu programa y las pone en otro programa, el servidor. Claude sigue sin hablar con nadie: el que conecta todo es el host.</p>
+  <p class="meta">Antes: <a href="0006-orquestacion-multi-agente.html">0006</a> · Después: Día 08 (transportes, scopes, <code>isError</code>, tools nativas) · ≈ 40 min de estudio + 30 min de lab · Fuentes primarias: <a href="https://modelcontextprotocol.io/docs/learn/architecture">MCP architecture</a> · <a href="https://modelcontextprotocol.io/docs/learn/server-concepts">Server concepts</a></p>
+</header>
+
+<h2>0 · Calentamiento (5 min)</h2>
+<p>La rutina nueva: el mensaje con resultados, de memoria, hasta que salga dos veces seguidas. Hoy, además, lo vas a escribir sin esqueleto en el lab.</p>
+<div class="recall" data-terms="role,user,content,tool_result,tool_use_id,is_error" data-prompt="Claude pidió dos tools en paralelo (toolu_A y toolu_B) y la B falló por timeout. Escribí el mensaje COMPLETO que agregás a messages: role, content y los dos bloques."></div>
+<div class="quiz" data-src="repaso-0006"></div>
+<script type="application/json" id="repaso-0006">[
+{"q":"Un coordinador investiga “la competencia en Córdoba”. Cada subagente cumplió, pero el informe solo habla de precios. ¿Causa más probable?",
+ "options":["El coordinador repartió un alcance angosto","El sintetizador no detectó los huecos","El buscador hizo consultas muy pobres","El redactor recortó el informe final"],"answer":0,
+ "why":"Si cada subagente cumplió, el hueco está en lo que <strong>el coordinador</strong> les asignó (guía 1.2). Lo fallaste en el quiz 0006 y lo dijiste a medias en el cierre."},
+{"q":"El coordinador ya tiene los hallazgos en su historial. ¿Por qué se copian igual en el prompt del redactor?",
+ "options":["El subagente arranca con la ventana vacía","El redactor no puede leer archivos TMDL","Así el coordinador ahorra sus tokens propios","La API exige repetir el último resultado"],"answer":0,
+ "why":"Guía 1.3: el subagente no hereda contexto. Lo dijiste bien en el cierre: si no está en la ventana, no existe."}
+]</script>
+
+<div class="callout"><span class="label">Mini diagnóstico (dominio nuevo, 3 min)</span>
+<p>Antes de leer, contestame en el chat en dos líneas cada una, sin buscar: <strong>(1)</strong> ¿qué problema resuelve MCP? <strong>(2)</strong> ¿quién ejecuta una tool de un servidor MCP? <strong>(3)</strong> ¿conocés alguna diferencia entre una tool y un resource? Si no sabés, decí “no sé”: sirve igual.</p></div>
+
+<div class="callout win"><span class="label">El logro de hoy</span>
+<p>Diseñar qué expone el servidor MCP del DWH de la hormigonera, decidir para cada cosa si es tool, resource o prompt, y seguir un pedido de punta a punta: del servidor a la Messages API y de vuelta. En el lab: 23/23 en <code>labs/07-mcp-primitivas/check.py</code>.</p></div>
+
+<h2>1 · El panorama: las tools se mudan a otro programa</h2>
+<p>Hasta ahora, en los Días 01 y 02, <strong>tu programa</strong> definía las tools (el JSON con <code>name</code>, <code>description</code> e <code>input_schema</code>) y las ejecutaba. Con MCP (<em>Model Context Protocol</em>), las dos cosas pasan a un programa aparte, el <strong>servidor MCP</strong>. Así, un mismo servidor sirve para cualquier aplicación que hable el protocolo: Claude Code, Claude Desktop o tu propio agente.</p>
+<div class="flow">
+<span class="node">servidor MCP: define y ejecuta</span><span class="arrow">⇄</span><span class="node hot">host (tu programa / Claude Code)</span><span class="arrow">⇄</span><span class="node">Messages API: Claude decide</span>
+</div>
+<p>Lo que <strong>no</strong> cambia: el request sigue siendo <code>model</code> + <code>max_tokens</code> + <code>system</code> + <code>tools</code> + <code>messages</code>, y Claude sigue pidiendo con <code>tool_use</code>. Para Claude, una tool MCP es una tool más.</p>
+
+<div class="callout"><span class="label">Lo estás usando ahora</span>
+<p>Esta sesión de Claude Code tiene conectados servidores MCP (por ejemplo, el de Atlassian). Sus tools me aparecen con nombres como <code>mcp__claude_ai_Atlassian__getJiraIssue</code>: <code>mcp__</code> + servidor + <code>__</code> + tool (<a href="https://code.claude.com/docs/en/permissions#mcp">Claude Code, permisos MCP</a>). Probá <code>/mcp</code> en tu Claude Code para ver los tuyos.</p></div>
+
+<h2>2 · Host, client, server</h2>
+<div class="table-wrap"><table>
+<tr><th>Rol</th><th>Qué es</th><th>En el ejemplo</th></tr>
+<tr><td><strong>Host</strong></td><td><em>“The AI application that coordinates and manages one or multiple MCP clients”</em></td><td>Claude Code, o tu agente en Python</td></tr>
+<tr><td><strong>Client</strong></td><td>Vive dentro del host y mantiene la conexión con <strong>un</strong> servidor</td><td>Uno para el DWH, otro para Jira</td></tr>
+<tr><td><strong>Server</strong></td><td><em>“A program that provides context to MCP clients”</em></td><td>El servidor del DWH de la hormigonera</td></tr>
+</table></div>
+<p>La relación es 1:1: <em>“The MCP host accomplishes this by creating one MCP client for each MCP server”</em> (<a href="https://modelcontextprotocol.io/docs/learn/architecture#participants">MCP architecture</a>). Los mensajes entre client y server son <strong>JSON-RPC 2.0</strong>: métodos como <code>tools/list</code> o <code>tools/call</code> (<a href="https://modelcontextprotocol.io/specification/2025-11-25/architecture">spec 2025-11-25</a>).</p>
+<p class="sidenote">Versiones de la spec: hasta la <strong>2025-11-25</strong>, la conexión empieza con un <code>initialize</code> en el que client y server negocian capabilities. La <strong>2026-07-28</strong> (la más nueva) es stateless: cada request lleva su versión y sus capabilities (<a href="https://modelcontextprotocol.io/specification/latest">spec latest</a>). La guía del examen no entra en ese detalle. Quedate con la idea: antes de usar nada, el client averigua qué ofrece el servidor.</p>
+
+<h2>3 · Las tres primitivas: ¿quién decide usarla?</h2>
+<p>Un servidor puede ofrecer tres cosas. La diferencia no es técnica sino de <strong>control</strong>: quién elige cuándo se usa (<a href="https://modelcontextprotocol.io/docs/learn/server-concepts#core-server-features">Server concepts</a>).</p>
+<div class="table-wrap"><table>
+<tr><th>Primitiva</th><th>La controla</th><th>Qué es</th><th>En Claude Code</th></tr>
+<tr><td><strong>Tool</strong></td><td>El <strong>modelo</strong></td><td>Una función que Claude invoca en medio del loop: hacer algo o calcular algo con argumentos que él arma. <em>“the language model can discover and invoke tools automatically”</em> (<a href="https://modelcontextprotocol.io/specification/latest/server/tools#user-interaction-model">spec: tools</a>).</td><td>Aparece como tool <code>mcp__servidor__tool</code></td></tr>
+<tr><td><strong>Resource</strong></td><td>La <strong>aplicación</strong></td><td>Contenido de solo lectura con una URI (un esquema, un archivo, un catálogo). <em>“host applications determining how to incorporate context based on their needs”</em> (<a href="https://modelcontextprotocol.io/specification/latest/server/resources#user-interaction-model">spec: resources</a>).</td><td>Lo mencionás con <code>@servidor:protocolo://ruta</code> y se adjunta</td></tr>
+<tr><td><strong>Prompt</strong></td><td>El <strong>usuario</strong></td><td>Una plantilla que el usuario elige a propósito, con o sin argumentos, <em>“for example, as slash commands”</em> (<a href="https://modelcontextprotocol.io/specification/latest/server/prompts#user-interaction-model">spec: prompts</a>).</td><td><code>/mcp__servidor__prompt</code></td></tr>
+</table></div>
+<p class="sidenote">Claude Code: resources con @ y prompts como comandos, en <a href="https://code.claude.com/docs/en/mcp#use-mcp-resources">Use MCP resources</a> y <a href="https://code.claude.com/docs/en/mcp#use-mcp-prompts-as-commands">MCP prompts as commands</a>.</p>
+
+<p><strong>Lo que pide la guía (2.4):</strong> exponer <strong>catálogos de contenido</strong> como resources (resúmenes de issues, jerarquías de documentación, esquemas de base de datos) <em>“to reduce exploratory tool calls”</em>. Si el esquema del DWH es un resource, el agente sabe qué tablas hay sin gastar cinco tool calls preguntando.</p>
+<div class="callout trap"><span class="label">Trampa del día (issue #4)</span>
+<p>Exponer como tool algo que es un resource de solo lectura: <code>listar_tablas()</code>, <code>get_diccionario_kpis()</code>. Funciona, pero obliga al modelo a explorar con llamadas. Ojo con el reverso: “solo lectura” no alcanza para que algo sea resource. Una <code>SELECT</code> con la consulta que arma Claude sigue siendo una <strong>tool</strong>, porque la elige el modelo con sus argumentos.</p></div>
+
+<h2>4 · Un pedido de punta a punta</h2>
+<p>El tutorial oficial de cliente MCP lo muestra en Python. El host le pide las tools al servidor, las convierte al formato de la Messages API y, cuando Claude devuelve <code>tool_use</code>, ejecuta la llamada en el servidor (<a href="https://modelcontextprotocol.io/docs/develop/build-client">Build an MCP client</a>):</p>
+<pre><code>tool_list = await client.list_tools()                     # tools/list
+available_tools = [{"name": t.name,
+                    "description": t.description,
+                    "input_schema": t.input_schema} for t in tool_list.tools]
+response = anthropic.messages.create(model=MODEL, max_tokens=1000,
+                                     messages=messages, tools=available_tools)
+...
+elif content.type == "tool_use":
+    result = await client.call_tool(tool_name, tool_args)  # tools/call</code></pre>
+<ol class="steps">
+<li>El client se conecta al servidor y averigua qué ofrece.</li>
+<li><code>tools/list</code>: recibe <code>name</code>, <code>description</code> e <code>inputSchema</code> de cada tool.</li>
+<li>El host las pone en el parámetro <code>tools</code> del request. <em>Si no están ahí, Claude no las conoce</em> (Día 05).</li>
+<li>Claude responde <code>stop_reason: "tool_use"</code> con un bloque <code>tool_use</code>.</li>
+<li>El <strong>client</strong> llama <code>tools/call</code> en el servidor. Claude nunca habla con el servidor.</li>
+<li>El host agrega <strong>un mensaje <code>user</code></strong> con el bloque <code>tool_result</code>. MCP marca las fallas con <code>isError</code>; la Messages API, con <code>is_error</code>.</li>
+</ol>
+<p>Y del lado del servidor, en Python (SDK oficial, rama <code>v1.x</code> con <code>FastMCP</code>; la 2.x usa <code>MCPServer</code> con los mismos decoradores) (<a href="https://github.com/modelcontextprotocol/python-sdk/tree/v1.x">python-sdk</a>):</p>
+<pre><code>mcp = FastMCP("Demo")
+
+@mcp.tool()                          # la elige el modelo
+def add(a: int, b: int) -> int: ...
+
+@mcp.resource("greeting://{name}")   # contenido con URI
+def get_greeting(name: str) -> str: ...
+
+@mcp.prompt()                        # plantilla para el usuario
+def greet_user(name: str) -> str: ...</code></pre>
+<p class="sidenote">El servidor completo lo construís en el Día 09. Hoy alcanza con reconocer las tres primitivas en el código.</p>
+
+<h2>5 · Elegir servidores y describir bien sus tools (2.4)</h2>
+<ul class="tight">
+<li><strong>Comunidad antes que propio.</strong> Para integraciones estándar (Jira, GitHub), usá un servidor existente. Reservá los servidores propios para los flujos específicos del equipo (guía 2.4). Antes de conectar uno, confirmá que confiás en él: <em>“Servers that fetch external content can expose you to prompt injection risk”</em> (<a href="https://code.claude.com/docs/en/mcp#find-and-build-mcp-servers">Claude Code MCP</a>).</li>
+<li><strong>Todas a la vez.</strong> Las tools de <em>todos</em> los servidores configurados se descubren al conectarse y quedan disponibles al mismo tiempo (guía 2.4). Para que no llenen el contexto, Claude Code usa <em>tool search</em>: al principio carga solo los nombres y trae la definición cuando la necesita (<a href="https://code.claude.com/docs/en/mcp#scale-with-mcp-tool-search">tool search</a>).</li>
+<li><strong>Descripciones que compitan con Grep.</strong> Si la description de <code>dwh_buscar_columna</code> es pobre, el agente prefiere las tools nativas (<code>Grep</code>) aunque la tuya sea mejor. La description tiene que explicar qué hace, qué devuelve y cuándo usarla (guía 2.4). Es la lección <a href="0002-diseno-de-tools.html">0002</a> aplicada a MCP.</li>
+</ul>
+<p class="sidenote">Del lado del client también hay primitivas: <strong>elicitation</strong> (el servidor le pide un dato al usuario), y <strong>sampling</strong> y <strong>roots</strong>, que la spec 2026-07-28 marcó como deprecated (<a href="https://modelcontextprotocol.io/docs/learn/client-concepts">Client concepts</a>). Para el examen, alcanza con saber que existen.</p>
+
+<h2>6 · Quiz (escenarios tipo examen)</h2>
+<div class="quiz" data-src="quiz-0007"></div>
+<script type="application/json" id="quiz-0007">[
+{"q":"Tu servidor MCP del DWH tiene <code>listar_tablas()</code> y <code>describir_tabla(nombre)</code>. En cada sesión, el agente hace 6 a 10 llamadas solo para orientarse. ¿Qué cambiás?",
+ "options":["Exponer el esquema como un resource","Subir el max_tokens de cada respuesta","Unir las dos tools en una","Usar un modelo más capaz siempre"],"answer":0,
+ "why":"Guía 2.4: los catálogos de contenido (esquemas de base de datos) como resources, para reducir las tool calls exploratorias."},
+{"q":"El equipo necesita que Claude Code cree y comente issues de Jira. ¿Qué hacés primero?",
+ "options":["Usar un servidor MCP de la comunidad","Escribir un servidor MCP propio desde cero","Pedirle a Claude que haga curl siempre","Copiar las issues a un archivo local"],"answer":0,
+ "why":"Guía 2.4: para integraciones estándar, servidores existentes de la comunidad; los propios, para flujos específicos del equipo."},
+{"q":"Agregaste <code>dwh_buscar_columna</code> (busca en el catálogo del DWH con sinónimos), pero el agente sigue usando Grep sobre los archivos SQL. ¿Qué cambiás?",
+ "options":["Detallar la description: qué hace y devuelve","Quitarle la tool Grep al agente siempre","Renombrar la tool a un nombre mejor","Ponerle tool_choice any a todo el request"],"answer":0,
+ "why":"Guía 2.4: descripciones que expliquen capacidades y salidas en detalle, para que el agente no prefiera las tools nativas."},
+{"q":"¿Quién manda el <code>tools/call</code> al servidor MCP cuando Claude decide usar una tool?",
+ "options":["El client MCP dentro del host","Claude, conectado en directo al servidor","El usuario, aprobando cada llamada manualmente","La Messages API del lado Anthropic"],"answer":0,
+ "why":"Claude solo emite tool_use. El host recibe la respuesta y su client hace tools/call. Es el mismo loop del Día 01."},
+{"q":"Un analista quiere elegir a mano, con <code>/</code>, la plantilla “Revisión de medida DAX” con el nombre de la medida como argumento. ¿Qué primitiva es?",
+ "options":["Prompt: la elige el usuario","Tool: la invoca el modelo","Resource: la elige la app","Sampling: la pide el server"],"answer":0,
+ "why":"Los prompts están pensados para que el usuario los elija explícitamente (por ejemplo, como slash commands). Pueden tener argumentos."},
+{"q":"Configuraste tres servidores MCP (DWH, Jira, GitHub). ¿Cuándo tiene el agente disponibles sus tools?",
+ "options":["Todas juntas, desde la conexión","Una por vez, por servidor","Solo después de pedirlas manualmente","Solo las del primer servidor"],"answer":0,
+ "why":"Guía 2.4: las tools de todos los servidores configurados se descubren al conectarse y quedan disponibles a la vez."},
+{"q":"El servidor del DWH tiene <code>ejecutar_select(consulta)</code>: no modifica nada. Alguien propone pasarla a resource “porque es de solo lectura”. ¿Qué respondés?",
+ "options":["No: la elige el modelo con argumentos","Sí: lo de solo lectura es resource","Sí: los resources son siempre más baratos","No: los resources no pueden devolver filas"],"answer":0,
+ "why":"Lo que decide es quién la controla. Una consulta que arma Claude en medio del loop es una tool; un catálogo fijo para dar contexto es un resource."}
+]</script>
+
+<h2>7 · Lab (30 min): completar huecos</h2>
+<p>En <a href="../labs/07-mcp-primitivas/README.md"><code>labs/07-mcp-primitivas/</code></a>, abrí <code>primitivas.py</code>:</p>
+<ol class="steps">
+<li><strong>¿Tool, resource o prompt?</strong> Diez capacidades del DWH (sección 3). Es el lab que pedía el issue.</li>
+<li><strong>El flujo completo</strong>: ordenar seis pasos y decir quién llama al servidor (sección 4).</li>
+<li><strong>Del resultado MCP al <code>tool_result</code></strong>: el mensaje escrito <strong>sin esqueleto</strong>. Es tu punto flojo: escribilo vos, sin copiar del lab 06.</li>
+</ol>
+<p>Corré <code>python check.py</code> hasta <strong>23/23</strong> y después <code>python primitivas.py</code>. Guardá con <code>Ctrl+S</code> antes de cada corrida.</p>
+
+<h2>8 · Cierre (10 min)</h2>
+<ul class="tight">
+<li>Preguntas de cierre que te paso yo.</li>
+<li>Errores del quiz a <code>errores.md</code>.</li>
+<li>Commit: <code>Día 07: lección y lab de arquitectura MCP y primitivas, closes #4</code>.</li>
+</ul>
+
+<div class="callout"><span class="label">Para leer (fuente primaria)</span>
+<p><a href="https://modelcontextprotocol.io/docs/learn/server-concepts">Understanding MCP servers</a>: las tres primitivas con ejemplos y la tabla “who controls it” (15 min). Si te queda tiempo: <a href="https://modelcontextprotocol.io/docs/learn/architecture">Architecture overview</a>, que es la base del Día 08.</p></div>
+
+<div class="callout"><span class="label">Preguntá</span>
+<p>Si algo no cierra, preguntale a tu agente: es tu profe. Por ejemplo: “mostrame las tools MCP que tenés conectadas ahora”.</p></div>
+
+<footer class="lesson"><nav>
+<a href="../reference/mcp.html">Referencia: MCP</a>
+<a href="../reference/multi-agente.html">Multi-agente</a>
+<a href="../reference/messages-api.html">Messages API</a>
+<a href="../reference/glosario.html">Glosario</a>
+</nav></footer>
+</main>
+<script src="../assets/quiz.js"></script>
+</body></html>

@@ -52,5 +52,14 @@
 <tr><td>prompt chaining</td><td>Descomposición en pasos fijos y secuenciales; para tareas predecibles (review por archivo + integración).</td><td>0006</td></tr>
 <tr><td>dynamic decomposition</td><td>Plan que genera subtareas según lo que se descubre; para tareas abiertas.</td><td>0006</td></tr>
 <tr><td>attention dilution</td><td>Pérdida de foco al revisar demasiado material a la vez; se evita partiendo en pasadas locales.</td><td>0006</td></tr>
+<tr><td>MCP (Model Context Protocol)</td><td>Protocolo para que un programa aparte (servidor) ofrezca tools, resources y prompts a cualquier aplicación compatible.</td><td><a href="../lessons/0007-arquitectura-mcp-y-primitivas.html">0007</a></td></tr>
+<tr><td>MCP host</td><td>La aplicación de IA (Claude Code, tu agente) que maneja uno o más clients y arma el request a la API.</td><td>0007</td></tr>
+<tr><td>MCP client</td><td>Componente del host con una conexión dedicada a un servidor (relación 1:1).</td><td>0007</td></tr>
+<tr><td>MCP server</td><td>Programa que expone primitivas (tools, resources, prompts) a los clients.</td><td>0007</td></tr>
+<tr><td>MCP tool</td><td>Primitiva controlada por el modelo: una función que Claude invoca en el loop. Métodos <code>tools/list</code> y <code>tools/call</code>.</td><td>0007</td></tr>
+<tr><td>MCP resource</td><td>Primitiva controlada por la aplicación: contenido de solo lectura con URI (esquemas, catálogos, archivos).</td><td>0007</td></tr>
+<tr><td>MCP prompt</td><td>Primitiva controlada por el usuario: plantilla que se elige a propósito, p. ej. como slash command.</td><td>0007</td></tr>
+<tr><td>JSON-RPC 2.0</td><td>Formato de los mensajes entre client y server MCP (métodos con parámetros y resultados).</td><td>0007</td></tr>
+<tr><td>isError (MCP)</td><td>Flag del resultado de <code>tools/call</code> que marca una falla; el host lo pasa como <code>is_error</code> en el <code>tool_result</code>.</td><td>0007</td></tr>
 </table></div>
 </main></body></html>

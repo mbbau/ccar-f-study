@@ -22,7 +22,14 @@
   - [x] Quiz 7/8 (falló Q1: culpó al sintetizador de un hueco de cobertura) · lab 24/24 en 2 corridas (1ª: `role: "system"`, `type: "user"`, `Bash` a todos)
   - [x] Cierre: 1 ✗ mensaje de resultados (`assistant` + `content: "tool_use"` + `tool_id`) · 2 ½ (dijo sintetizador, es el coordinador) · 3 ✔/~ · 4 ✔. Learning record 0004
 - [ ] Leer [Subagents in the SDK](https://code.claude.com/docs/en/agent-sdk/subagents)
-- [ ] Commit del Día 06
+- [x] Commit del Día 06 (`97d3698`, pusheado)
+- [x] **Día 07** · Arquitectura MCP y primitivas (#4)
+  - [x] Lección `lessons/0007-arquitectura-mcp-y-primitivas.html` y lab `labs/07-mcp-primitivas/` (23 checks) con la skill `teach`; `reference/mcp.html`, 9 términos en el glosario y fuentes MCP en `RESOURCES.md`
+  - [x] Calentamiento: mensaje con dos `tool_result` completo de memoria (1ª vez; solo repitió `toolu_A`) · repaso 0006 2/2
+  - [x] Mini diagnóstico: 1 ✔ · 2 ✗ "lo ejecuta Claude" · 3 ~ · quiz 6/7 (Q4: "Claude conectado al servidor") · lab 23/23 (hueco 3: lista de más y `context`)
+  - [x] Cierre: 1 ✗ Claude "llama a la tool" (3ª vez) · 2 ✔ · 3 ½ · 4 ~ (`mcp__client__task`). Learning record 0005
+- [ ] Leer [Understanding MCP servers](https://modelcontextprotocol.io/docs/learn/server-concepts)
+- 🎯 Calentamiento de cada sesión: (a) el mensaje con dos `tool_result` (falta 1 de 2) y (b) narrar el flujo MCP con los 4 actores
 - [x] Plan 07–20: **no se recorta nada** (decisión 16/10). Va a intentar hacer varios días más hoy; reevaluar al final del día
 
 ## mar 13/10

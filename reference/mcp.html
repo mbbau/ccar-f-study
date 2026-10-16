@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Referencia · MCP</title><link rel="stylesheet" href="../assets/style.css"></head>
+<body><main>
+<header class="lesson"><div class="kicker">Referencia · D2</div><h1>MCP: arquitectura y primitivas</h1>
+<p class="subtitle">Ficha rápida. Lección: <a href="../lessons/0007-arquitectura-mcp-y-primitivas.html">0007</a>. Se amplía en el Día 08 (transportes, scopes, <code>isError</code>).</p></header>
+
+<h2>Roles</h2>
+<ul class="tight">
+<li><strong>Host</strong>: la aplicación (Claude Code, tu agente). Arma el request a la Messages API.</li>
+<li><strong>Client</strong>: dentro del host, uno por servidor (1:1). Habla JSON-RPC 2.0 con el servidor.</li>
+<li><strong>Server</strong>: programa que define y ejecuta tools, y ofrece resources y prompts.</li>
+<li>Claude nunca habla con el servidor: emite <code>tool_use</code> y el client hace <code>tools/call</code>.</li>
+</ul>
+
+<h2>Primitivas del servidor</h2>
+<div class="table-wrap"><table>
+<tr><th>Primitiva</th><th>La controla</th><th>Métodos</th><th>Claude Code</th></tr>
+<tr><td>Tool</td><td>Modelo</td><td><code>tools/list</code> · <code>tools/call</code></td><td><code>mcp__servidor__tool</code></td></tr>
+<tr><td>Resource</td><td>Aplicación</td><td><code>resources/list</code> · <code>resources/read</code> · <code>resources/templates/list</code></td><td><code>@servidor:protocolo://ruta</code></td></tr>
+<tr><td>Prompt</td><td>Usuario</td><td><code>prompts/list</code> · <code>prompts/get</code></td><td><code>/mcp__servidor__prompt</code></td></tr>
+</table></div>
+<ul class="tight">
+<li>Catálogos (esquemas, diccionarios, issues, docs) → <strong>resource</strong>: menos tool calls exploratorias.</li>
+<li>Acción, o cálculo con argumentos que arma Claude (aunque sea de solo lectura) → <strong>tool</strong>.</li>
+<li>Plantilla que elige el usuario (puede tener argumentos) → <strong>prompt</strong>.</li>
+<li>Client: elicitation (pedir datos al usuario); sampling y roots, deprecated en la spec 2026-07-28.</li>
+</ul>
+
+<h2>Flujo</h2>
+<p>conexión → <code>tools/list</code> → <code>tools</code> del request → <code>tool_use</code> → <code>tools/call</code> → mensaje <code>user</code> con <code>tool_result</code> (MCP <code>isError</code> → API <code>is_error</code>).</p>
+
+<h2>Guía 2.4</h2>
+<ul class="tight">
+<li>Servidor de la comunidad para integraciones estándar (Jira); propio, para flujos del equipo.</li>
+<li>Las tools de todos los servidores se descubren al conectar y están disponibles a la vez.</li>
+<li>Descriptions detalladas (qué hace, qué devuelve) para que no gane <code>Grep</code>.</li>
+</ul>
+<p class="sidenote">Fuentes: <a href="https://modelcontextprotocol.io/docs/learn/architecture">Architecture</a> · <a href="https://modelcontextprotocol.io/docs/learn/server-concepts">Server concepts</a> · <a href="https://modelcontextprotocol.io/docs/develop/build-client">Build a client</a> · <a href="https://code.claude.com/docs/en/mcp">Claude Code MCP</a> · Guía 2.4.</p>
+</main></body></html>

@@ -83,6 +83,15 @@ Fuentes oficiales y verificables para preparar la certificación Claude Certifie
   Especificación completa del Model Context Protocol: transports (stdio, SSE), resources, tools, prompts, sampling. **Lectura esencial para D4.**
 - [MCP Introduction](https://modelcontextprotocol.io/introduction)
   Introducción oficial al protocolo MCP: qué problema resuelve, arquitectura client-server, conceptos clave.
+- [MCP Docs: Architecture overview](https://modelcontextprotocol.io/docs/learn/architecture)
+  Host / client / server, un client por servidor, capa de datos JSON-RPC 2.0. Base del Día 07 y del 08.
+- [MCP Docs: Understanding MCP servers](https://modelcontextprotocol.io/docs/learn/server-concepts)
+  Tools (modelo), resources (aplicación), prompts (usuario), con la tabla "who controls it". **Fuente primaria del Día 07.**
+- [MCP Docs: Build an MCP client](https://modelcontextprotocol.io/docs/develop/build-client)
+  Cómo `list_tools()` se convierte en el parámetro `tools` de la Messages API y `call_tool()` ejecuta el `tool_use`.
+- [Claude Code Docs: MCP](https://code.claude.com/docs/en/mcp)
+  Resources con @, prompts como `/mcp__servidor__prompt`, tool search, confianza en servidores.
+- **Versiones de la spec:** la 2026-07-28 (latest) es stateless (sin `initialize`) y deprecó sampling y roots; la [2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25) mantiene el modelo clásico. La guía del examen no entra en ese detalle.
 - [MCP Python SDK (GitHub)](https://github.com/modelcontextprotocol/python-sdk)
   SDK oficial en Python para construir servidores y clientes MCP. Use for: labs de construcción de servidores MCP.
 

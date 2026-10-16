@@ -1,0 +1,7 @@
+# Cree que Claude se conecta y ejecuta: no separa al modelo del programa
+
+Con MCP apareció un error de modelo mental que los días anteriores no se veían: Matías cree que Claude "llama a la tool" o "se conecta al servidor". Para él, "Claude" y "el agente" son la misma cosa. En los Días 01–02 el error no aparecía porque el lab decía "tu código ejecuta". Con MCP, la ejecución se muda a un programa que él no escribe (el servidor), y el hueco se rellena con "lo hace Claude".
+
+**Evidence:** 16/10, tres veces en la misma sesión. En el mini diagnóstico: "la ejecuta Claude, es decir, el agente". En el quiz 0007, Q4: "Claude, conectado en directo al servidor". Ya leída la sección 4, en el cierre: "claude llama a la tool, la tool ejecuta el código" (sin client ni host, aunque la pregunta los nombraba). En el lab 07 el hueco 2b salió bien, pero ahí era una opción entre tres. Lo demás del día salió bien: primitivas por quién las controla ✔, quiz 6/7, lab 23/23, y el mensaje con dos `tool_result` de memoria con la estructura completa por primera vez (solo repitió `toolu_A`).
+
+**Implications:** reconocer la opción correcta no alcanza: hay que pedirle que **narre** el flujo con los cuatro actores (Claude pide · client llama · servidor ejecuta · host devuelve). Ancla útil: Claude corre en Anthropic y no tiene red ni credenciales hacia su DWH. El Día 08 (transportes: stdio corre en su máquina, HTTP es remoto) es buen lugar para reforzarlo: ¿dónde corre cada pieza? Sumar la narración al calentamiento de cada sesión, junto con el mensaje `tool_result`.
