@@ -1,6 +1,6 @@
 # Backlog — Certificación CCAR-F
 
-**Última actualización:** 2026-10-13 (Día 05 cerrado; plan replanificado por el examen adelantado)
+**Última actualización:** 2026-10-16 (Días 06 y 07 cerrados; sesión terminada. Próximo: Día 08)
 **Examen:** **vie 23/10/2026** (adelantado del mar 27/10, acordado con Vane el 13/10) · meta ≥ 800/1000 (corte 720)
 
 > Resumen del día a día: qué hicimos, qué toca hoy y qué falta. Claude lo lee al arrancar
@@ -30,7 +30,7 @@
   - [x] Cierre: 1 ✗ Claude "llama a la tool" (3ª vez) · 2 ✔ · 3 ½ · 4 ~ (`mcp__client__task`). Learning record 0005
 - [ ] Leer [Understanding MCP servers](https://modelcontextprotocol.io/docs/learn/server-concepts)
 - 🎯 Calentamiento de cada sesión: (a) el mensaje con dos `tool_result` (falta 1 de 2) y (b) narrar el flujo MCP con los 4 actores
-- [x] Plan 07–20: **no se recorta nada** (decisión 16/10). Va a intentar hacer varios días más hoy; reevaluar al final del día
+- [x] Plan 07–20: **no se recorta nada** (decisión 16/10). Hizo 06 y 07; cortó ahí. Quedan 08–20 + mock para lun 19 – jue 22/10: reevaluar al arrancar la próxima sesión
 
 ## mar 13/10
 
