@@ -12,7 +12,20 @@
 
 ---
 
-## 🔥 Hoy — mar 13/10
+## 🔥 Hoy — vie 16/10
+
+> 14 y 15/10 sin sesión: el plan de abajo quedó corrido dos días.
+
+- [x] **Día 06** · Orquestación multi-agente y asignación de modelos (#2)
+  - [x] Lección `lessons/0006-orquestacion-multi-agente.html` y lab `labs/06-multiagente/` (24 checks) con la skill `teach`; `reference/multi-agente.html`, 10 términos en el glosario y fuentes D1 en `RESOURCES.md`
+  - [x] Calentamiento: 5 claves del request ✔ · mensaje con dos `tool_result` ~ · repaso 0005 2/2
+  - [x] Quiz 7/8 (falló Q1: culpó al sintetizador de un hueco de cobertura) · lab 24/24 en 2 corridas (1ª: `role: "system"`, `type: "user"`, `Bash` a todos)
+  - [x] Cierre: 1 ✗ mensaje de resultados (`assistant` + `content: "tool_use"` + `tool_id`) · 2 ½ (dijo sintetizador, es el coordinador) · 3 ✔/~ · 4 ✔. Learning record 0004
+- [ ] Leer [Subagents in the SDK](https://code.claude.com/docs/en/agent-sdk/subagents)
+- [ ] Commit del Día 06
+- [x] Plan 07–20: **no se recorta nada** (decisión 16/10). Va a intentar hacer varios días más hoy; reevaluar al final del día
+
+## mar 13/10
 
 - [x] Calentamiento tras 5 días de pausa: 1 ✗ request con `tools`, `system` y `response` (perdió `model`, `max_tokens`, `messages`) · 2 ~ sin `role`/`content`/`type: "tool_result"`, otra vez `error_message` · 3 ✔ JSON Schema nullable con `null` literal en el enum
 - [x] **Día 05** · Ventana de contexto y lost in the middle (#11): secciones 1–6, quiz 7/7, lab 17/17 en 4 corridas (pistas en el 3a), cierre 1 ✔ · 2 ~ · 3 ½ (faltó la razón del cache), learning record 0003

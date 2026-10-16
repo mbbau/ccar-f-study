@@ -42,5 +42,15 @@
 <tr><td>case facts block</td><td>Bloque persistente con datos transaccionales (montos, fechas, ids, expectativas del cliente) que va textual en cada request, fuera del historial resumido.</td><td>0005</td></tr>
 <tr><td>prompt caching</td><td>Reutilización del prefijo de un request (<code>tools</code> → <code>system</code> → <code>messages</code>) hasta un breakpoint; baja costo y latencia, no la ventana de contexto.</td><td>0005</td></tr>
 <tr><td>cache_control</td><td>Marca en un bloque (<code>{"type": "ephemeral"}</code>) que fija el breakpoint del prompt caching; TTL de 5 min por defecto o 1 h.</td><td>0005</td></tr>
+<tr><td>subagent</td><td>Agente lanzado por otro, con su propia ventana de contexto: recibe solo el prompt que le pasan y devuelve solo su mensaje final.</td><td><a href="../lessons/0006-orquestacion-multi-agente.html">0006</a></td></tr>
+<tr><td>coordinator (orchestrator)</td><td>Agente que descompone la tarea, delega en subagentes, junta los resultados y decide si volver a delegar.</td><td>0006</td></tr>
+<tr><td>hub-and-spoke</td><td>Arquitectura en la que toda comunicación, errores y ruteo entre subagentes pasan por el coordinador.</td><td>0006</td></tr>
+<tr><td>Task / Agent (tool)</td><td>Tool con la que un agente lanza un subagente. <code>Task</code> en la guía; renombrada <code>Agent</code> (Task sigue como alias).</td><td>0006</td></tr>
+<tr><td>AgentDefinition</td><td>Configuración de un tipo de subagente en el Agent SDK: <code>description</code>, <code>prompt</code>, <code>tools</code>, <code>model</code>.</td><td>0006</td></tr>
+<tr><td>allowedTools</td><td>Tools habilitadas para un agente del SDK. El coordinador necesita <code>Task</code>/<code>Agent</code> para delegar.</td><td>0006</td></tr>
+<tr><td>context isolation</td><td>El subagente no hereda historial ni memoria del coordinador; el contexto se pasa explícito en el prompt.</td><td>0006</td></tr>
+<tr><td>prompt chaining</td><td>Descomposición en pasos fijos y secuenciales; para tareas predecibles (review por archivo + integración).</td><td>0006</td></tr>
+<tr><td>dynamic decomposition</td><td>Plan que genera subtareas según lo que se descubre; para tareas abiertas.</td><td>0006</td></tr>
+<tr><td>attention dilution</td><td>Pérdida de foco al revisar demasiado material a la vez; se evita partiendo en pasadas locales.</td><td>0006</td></tr>
 </table></div>
 </main></body></html>

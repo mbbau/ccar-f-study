@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>0006 · Orquestación multi-agente</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head><body><main>
+
+<header class="lesson">
+  <div class="kicker">Día 06 · Vie 16/10 · Issue #2 · Guía: task statements 1.2, 1.3 y 1.6</div>
+  <h1>Orquestación multi-agente</h1>
+  <p class="subtitle">Un subagente es otra conversación con Claude, con la ventana vacía. Lo único que sabe es lo que el coordinador le escribe en el prompt.</p>
+  <p class="meta">Antes: <a href="0005-ventana-de-contexto.html">0005</a> · Después: Día 07 (MCP) · ≈ 40 min de estudio + 30 min de lab · Fuentes primarias: <a href="https://code.claude.com/docs/en/agent-sdk/subagents">Subagents in the SDK</a> · <a href="https://www.anthropic.com/engineering/multi-agent-research-system">How we built our multi-agent research system</a></p>
+</header>
+
+<h2>0 · Calentamiento (5 min)</h2>
+<p>Quedó pendiente del 13/10, y hoy lo vas a necesitar: lanzar dos subagentes en paralelo es <em>exactamente</em> este caso. De memoria, sin mirar.</p>
+<div class="recall" data-terms="model,max_tokens,system,tools,messages,role,user,tool_result,tool_use_id,is_error,content" data-prompt="Claude pidió dos tools en paralelo y una falló. Escribí: (1) las 5 claves de primer nivel del request y (2) el mensaje que agregás a messages con los dos resultados (el que falló, con su error)."></div>
+<div class="quiz" data-src="repaso-0005"></div>
+<script type="application/json" id="repaso-0005">[
+{"q":"Un coordinador junta seis informes largos y el reporte final ignora los del medio. ¿Qué cambiás?",
+ "options":["Resumen clave arriba y secciones claras","Repetir dos veces los informes medios","Pedir que lea con mucha atención","Subir el max_tokens del reporte final"],"answer":0,
+ "why":"Lost in the middle (0005, sección 4). Hoy vas a ver de dónde salen esos seis informes."},
+{"q":"¿Qué conviene que devuelva un subagente que leyó 40 archivos?",
+ "options":["Un resumen con hallazgos y sus fuentes","Los 40 archivos completos por las dudas","Su historial entero de mensajes y tools","Nada: el coordinador ya lo puede leer"],"answer":0,
+ "why":"0005, sección 6: el subagente lee mucho y devuelve poco. Ese es el punto de partida de hoy."}
+]</script>
+
+<div class="callout win"><span class="label">El logro de hoy</span>
+<p>Configurar el agente “analista” del issue: un coordinador y tres subagentes con tools mínimas y un modelo elegido para cada uno, el prompt que recibe el redactor y el turno en que el coordinador lanza dos subagentes en paralelo. En el lab: 24/24 en <code>labs/06-multiagente/check.py</code>.</p></div>
+
+<h2>1 · El panorama: un subagente es otro loop</h2>
+<p>Seguimos en el mismo diagrama de la lección <a href="0001-messages-api-y-agentic-loop.html">0001</a>. El coordinador es un agente común: tu programa llama a <code>messages.create</code> en loop. La diferencia es que una de sus tools se llama <strong><code>Agent</code></strong>. Cuando Claude la pide, tu runtime (el Agent SDK o Claude Code) <strong>arranca otro loop</strong>, con su propia lista <code>messages</code>:</p>
+<div class="flow">
+<span class="node">coordinador: tool_use <code>Agent</code></span><span class="arrow">→</span><span class="node hot">loop nuevo: system = prompt del subagente · messages = [tu prompt]</span><span class="arrow">→</span><span class="node">su mensaje final</span><span class="arrow">→</span><span class="node">tool_result al coordinador</span>
+</div>
+<p>La doc del SDK lo dice sin vueltas: <em>“The only content you pass from parent to subagent is the Agent tool's prompt string”</em>, y <em>“intermediate tool calls and results stay inside the subagent; only its final message returns to the parent”</em> (<a href="https://code.claude.com/docs/en/agent-sdk/subagents">Subagents in the SDK</a>).</p>
+
+<div class="callout"><span class="label">Lo viste hoy, sin darte cuenta</span>
+<p>Para armar esta clase lancé un subagente que investigara las fuentes. No sabía nada de vos ni del curso: en su prompt le escribí el tema, qué páginas leer, que citara textual y que devolviera un informe de 900 palabras como máximo. Leyó 12 páginas (unos 78.000 tokens en <em>su</em> ventana). A la mía llegó solo el informe. Eso es un subagente.</p></div>
+
+<p class="sidenote">Nombre: en la guía del examen la tool se llama <strong><code>Task</code></strong>. En la versión 2.1.63 de Claude Code la renombraron <code>Agent</code>, y <code>Task</code> sigue funcionando como alias (<a href="https://code.claude.com/docs/en/sub-agents">Create custom subagents</a>). Si en el examen ves <code>Task</code>, es esto.</p>
+
+<h2>2 · Hub-and-spoke: todo pasa por el coordinador (1.2)</h2>
+<p>En el patrón <strong>coordinator–subagent</strong> el coordinador es el centro (hub) y los subagentes son los rayos (spokes): los subagentes no se hablan entre ellos. Toda la comunicación, el manejo de errores y el ruteo de información pasan por el coordinador, para tener <em>“observability, consistent error handling, and controlled information flow”</em> (guía 1.2).</p>
+<p>El trabajo del coordinador:</p>
+<ol class="steps">
+<li><strong>Descomponer</strong> la tarea y <strong>repartir</strong> el alcance sin que se pise: cada subagente con un subtema o un tipo de fuente distinto. Sin eso, <em>“agents duplicate work, leave gaps, or fail to find necessary information”</em> (<a href="https://www.anthropic.com/engineering/multi-agent-research-system">Multi-agent research system</a>).</li>
+<li><strong>Elegir a quién llamar</strong> según la complejidad, en lugar de pasar siempre por el pipeline completo. Anthropic escala así: <em>“Simple fact-finding requires just 1 agent with 3-10 tool calls”</em>; una comparación, 2 a 4 subagentes; una investigación compleja, más de 10.</li>
+<li><strong>Juntar</strong> los resultados, buscar huecos y <strong>volver a delegar</strong> con consultas puntuales hasta que la cobertura alcance (refinamiento iterativo).</li>
+</ol>
+<div class="callout trap"><span class="label">El error que el examen pregunta</span>
+<p>Si el informe final tiene un hueco y cada subagente hizo bien su parte, el problema está en <strong>lo que les asignaron</strong>. La pregunta 7 de la guía: “impacto de la IA en las industrias creativas” se descompuso en arte digital, diseño gráfico y fotografía, y el informe no habla de música, escritura ni cine. La causa es una descomposición demasiado angosta del coordinador, no los subagentes.</p></div>
+
+<h2>3 · Contexto aislado: lo que no está en el prompt no existe (1.3)</h2>
+<p>Es la regla de la lección <a href="0005-ventana-de-contexto.html">0005</a> (“lo que no está en el request no existe”), ahora entre agentes. El subagente <strong>no hereda</strong> el historial del coordinador ni comparte memoria entre una invocación y la siguiente (guía 1.3). Entonces el prompt que le escribís tiene que llevar:</p>
+<div class="table-wrap"><table>
+<tr><th>Va en el prompt</th><th>Por qué</th></tr>
+<tr><td>Objetivo, formato de salida, qué tools y fuentes usar, límites de la tarea</td><td><em>“Each subagent needs an objective, an output format, guidance on the tools and sources to use, and clear task boundaries”</em> (<a href="https://www.anthropic.com/engineering/multi-agent-research-system">Anthropic</a>)</td></tr>
+<tr><td>Los hallazgos <strong>completos</strong> de los agentes anteriores</td><td>El sintetizador no vio lo que encontró el buscador: se lo pasás textual (guía 1.3)</td></tr>
+<tr><td>Contenido separado de su metadata (URL, archivo, página, fecha)</td><td>Formato estructurado para que el informe final conserve de dónde salió cada dato (guía 1.3)</td></tr>
+</table></div>
+<div class="callout trap"><span class="label">Trampa del día (issue #2)</span>
+<p>“Le paso todo el historial al subagente, por las dudas.” Rompés lo que hace útil al subagente: <em>“specialized sub-agents can handle focused tasks with clean context windows”</em> (<a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">Effective context engineering</a>). El historial trae ruido y es context rot (0005). Pasale lo que la tarea necesita, completo, y nada más.</p></div>
+<p>Y el prompt del <strong>coordinador</strong>: objetivos y criterios de calidad, no un paso a paso. Así los subagentes se adaptan a lo que encuentran (guía 1.3).</p>
+
+<h2>4 · Configurar subagentes (1.3)</h2>
+<p>En el Agent SDK cada tipo de subagente es una <strong><code>AgentDefinition</code></strong>. En Claude Code es lo mismo, escrito como un archivo en <code>.claude/agents/</code>:</p>
+<div class="table-wrap"><table>
+<tr><th>Campo</th><th>Qué es</th></tr>
+<tr><td><code>description</code></td><td><em>“Natural language description of when to use this agent”</em>: con esto el coordinador decide a quién delegar. Es como la description de una tool (<a href="0002-diseno-de-tools.html">0002</a>).</td></tr>
+<tr><td><code>prompt</code></td><td>El system prompt del subagente: su rol y cómo trabaja.</td></tr>
+<tr><td><code>tools</code></td><td>Las tools que puede usar. <strong>Si lo omitís, hereda todas</strong> (<em>“If omitted, inherits every tool available to subagents”</em>). Dale el mínimo.</td></tr>
+<tr><td><code>model</code></td><td><code>"haiku"</code>, <code>"sonnet"</code>, <code>"opus"</code>, <code>"inherit"</code>… (sección 6).</td></tr>
+</table></div>
+<p class="sidenote">Fuente de los campos: <a href="https://code.claude.com/docs/en/agent-sdk/subagents">Subagents in the SDK</a>. En Claude Code: <a href="https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields">frontmatter de subagentes</a>.</p>
+<p>Dos reglas que la guía pide saber:</p>
+<ul class="tight">
+<li><strong>El coordinador necesita la tool para delegar</strong>: su <code>allowedTools</code> tiene que incluir <code>"Task"</code> (guía 1.3; hoy <code>"Agent"</code>). Si no está, el coordinador no puede lanzar subagentes y hace todo él.</li>
+<li><strong>Paralelo = varias llamadas en una misma respuesta.</strong> El coordinador emite varios bloques <code>tool_use</code> de <code>Agent</code> en <em>un</em> turno, no uno por turno (guía 1.3). Las tareas independientes terminan <em>“in the time of the slowest one rather than the sum of all of them”</em>. Y del lado de tu programa vuelve lo de siempre: <strong>un</strong> mensaje <code>user</code> con un <code>tool_result</code> por cada <code>tool_use_id</code>.</li>
+</ul>
+
+<h2>5 · Descomponer: ¿pipeline fijo o plan que se adapta? (1.6)</h2>
+<div class="table-wrap"><table>
+<tr><th></th><th>Prompt chaining (pipeline fijo)</th><th>Descomposición dinámica</th></tr>
+<tr><td><strong>Cuándo</strong></td><td>Sabés los pasos de antemano: revisiones multi-aspecto predecibles</td><td>Tareas abiertas: los subtareas salen de lo que vas descubriendo</td></tr>
+<tr><td><strong>Ejemplo de la guía</strong></td><td>Code review: una pasada por archivo + una pasada aparte de integración entre archivos, para evitar la <em>attention dilution</em></td><td>“Agregar tests a un codebase legacy”: mapear la estructura, encontrar las zonas de mayor impacto, armar un plan priorizado y ajustarlo a medida que aparecen dependencias</td></tr>
+</table></div>
+<p>Es la misma distinción de <a href="https://www.anthropic.com/research/building-effective-agents">Building effective agents</a>. En <strong>parallelization</strong> los subtareas están definidos de antemano. En <strong>orchestrator-workers</strong>, en cambio, <em>“subtasks aren't pre-defined, but determined by the orchestrator based on the specific input”</em>. Y el consejo de fondo: <em>“finding the simplest solution possible, and only increasing complexity when needed.”</em></p>
+
+<h2>6 · ¿Qué modelo para cada agente?</h2>
+<p>La guía no lo pide con detalle (deja fuera de alcance las comparaciones de modelos y los precios), pero el issue sí, y en el trabajo lo vas a decidir seguido. La lógica es costo y latencia contra cuánto razonamiento necesita la tarea (<a href="https://platform.claude.com/docs/en/models/overview">Models overview</a>):</p>
+<div class="table-wrap"><table>
+<tr><th>Modelo</th><th>Latencia</th><th>Para qué (según la doc)</th></tr>
+<tr><td>Haiku 5.5</td><td>La más baja</td><td>Alto volumen y baja latencia: clasificar, extraer, rutear, <em>“sub-agent tasks”</em></td></tr>
+<tr><td>Sonnet 5.5</td><td>Rápida</td><td><em>“The best combination of speed and intelligence”</em></td></tr>
+<tr><td>Opus 5.5</td><td>Moderada</td><td>Trabajo agéntico largo; el punto de partida si no sabés cuál usar</td></tr>
+<tr><td>Fable 5.1</td><td>La más alta</td><td>Razonamiento exigente y trabajo agéntico de horizonte largo</td></tr>
+</table></div>
+<ul class="tight">
+<li><strong>El patrón:</strong> un coordinador capaz que delega el trabajo voluminoso en workers más baratos (<em>“an orchestrator that delegates bulk work to lower-cost workers”</em>, <a href="https://platform.claude.com/docs/en/about-claude/models/choosing-a-model">Choosing a model</a>). El sistema de investigación de Anthropic usaba Opus como líder y Sonnet en los subagentes.</li>
+<li><strong>El costo:</strong> <em>“multi-agent systems use about 15× more tokens than chats”</em>. Solo vale la pena si el valor de la tarea lo paga. Y no sirve cuando todos los agentes necesitan el mismo contexto o dependen mucho entre sí (<a href="https://www.anthropic.com/engineering/multi-agent-research-system">Anthropic</a>).</li>
+</ul>
+<div class="callout trap"><span class="label">La otra trampa del issue</span>
+<p>“El modelo más potente para todo.” Un subagente que hace grep en 80 archivos TMDL no necesita Fable: necesita ser rápido y barato.</p></div>
+
+<h2>7 · Quiz (escenarios tipo examen)</h2>
+<div class="quiz" data-src="quiz-0006"></div>
+<script type="application/json" id="quiz-0006">[
+{"q":"Un coordinador audita la calidad del DWH. Lo descompuso en “nulos en ventas”, “nulos en clientes” y “nulos en stock”. Cada subagente cumplió, pero el informe no menciona duplicados ni integridad referencial. ¿Causa más probable?",
+ "options":["Coordinador con descomposición muy angosta","Subagente con consultas SQL pobres","Faltan criterios claros al sintetizador","Modelos demasiado chicos en workers"],"answer":0,
+ "why":"Guía 1.2 (y la pregunta 7 de la guía): los subagentes hicieron bien lo asignado; el hueco está en lo que el coordinador les asignó."},
+{"q":"El coordinador invoca al sintetizador con “Sintetizá lo que investigamos”. El informe sale genérico y sin los datos que encontró el buscador. ¿Qué cambiás?",
+ "options":["Pasarle los hallazgos completos en el prompt","Darle acceso al historial entero del coordinador","Pedirle que recuerde toda la investigación previa","Usar un modelo con más ventana disponible"],"answer":0,
+ "why":"Guía 1.3: el subagente no hereda contexto ni memoria. Los hallazgos van completos en su prompt; el historial entero es la trampa del día."},
+{"q":"Tres subagentes independientes tardan 40 s cada uno y el coordinador los lanza uno por turno: 2 minutos en total. ¿Qué cambiás?",
+ "options":["Emitir las tres llamadas en una respuesta","Usar un modelo más rápido por worker","Fusionar los tres subagentes en uno solo","Mandar las tres tareas en un batch"],"answer":0,
+ "why":"Guía 1.3: varios tool_use de Task/Agent en una misma respuesta. Terminan en el tiempo del más lento (≈ 40 s). Batches no sirve: alguien está esperando (Día 04)."},
+{"q":"Definiste tres AgentDefinition, pero el coordinador nunca delega y hace todo él. Su <code>allowedTools</code> es <code>[\"Read\", \"Grep\"]</code>. ¿Qué falta?",
+ "options":["La tool Agent (Task) en allowedTools","El campo model en cada AgentDefinition","Ejemplos few-shot en el system prompt","El parámetro tool_choice con valor any"],"answer":0,
+ "why":"Guía 1.3: para lanzar subagentes, allowedTools tiene que incluir Task (hoy Agent). Sin esa tool, no hay forma de delegar."},
+{"q":"Un code review de un PR con 14 archivos da comentarios contradictorios y se le escapan bugs que cruzan archivos. ¿Cómo lo reestructurás?",
+ "options":["Pasada por archivo y otra de integración","Un prompt con los 14 archivos juntos","Modelo de más contexto para el PR","Revisar solo los archivos con más cambios"],"answer":0,
+ "why":"Guía 1.6: prompt chaining para reviews predecibles. Análisis local por archivo + una pasada aparte entre archivos para evitar la attention dilution."},
+{"q":"Te piden “agregar tests completos a un codebase legacy” que nadie conoce bien. ¿Qué estrategia de descomposición?",
+ "options":["Mapear, priorizar y adaptar el plan","Pipeline fijo con pasos definidos antes","Un subagente por archivo en paralelo","Pedir los tests en un prompt"],"answer":0,
+ "why":"Guía 1.6: tarea abierta → descomposición dinámica. Mapear estructura, áreas de alto impacto, plan priorizado que se ajusta a las dependencias."},
+{"q":"El buscador le manda sus resultados directo al redactor. Cuando el buscador falla, el redactor recibe una lista vacía y el coordinador nunca se entera. ¿Qué cambiás?",
+ "options":["Rutear todo por el coordinador","Que el redactor reintente buscar","Que compartan memoria entre sí","Devolver vacío marcado como éxito"],"answer":0,
+ "why":"Hub-and-spoke (guía 1.2): toda la comunicación pasa por el coordinador, que maneja los errores. Una falla disfrazada de vacío es el error del Día 02."},
+{"q":"Un subagente solo clasifica tickets en 4 categorías, 10.000 por día, y la latencia importa. ¿Qué modelo le asignás?",
+ "options":["Haiku: rápido y barato para esto","Fable: el más capaz de todos","Opus: el que la doc recomienda","El mismo modelo que el coordinador"],"answer":0,
+ "why":"La doc pone a Haiku para alto volumen y baja latencia (clasificación, ruteo, tareas de subagente). Que Opus sea el punto de partida es para cuando no sabés qué usar."}
+]</script>
+
+<h2>8 · Lab (30 min): completar huecos</h2>
+<p>En <a href="../labs/06-multiagente/README.md"><code>labs/06-multiagente/</code></a>, abrí <code>multiagente.py</code> (y leé <code>datos.py</code>):</p>
+<ol class="steps">
+<li><strong>Definir los subagentes</strong>: tools mínimas y modelo de cada uno, y la tool que necesita el coordinador (secciones 4 y 6).</li>
+<li><strong>El prompt del redactor</strong>: qué va y qué no (sección 3).</li>
+<li><strong>Dos subagentes en paralelo</strong>: el turno del coordinador y el mensaje con los dos resultados (sección 4 + lección 0001). Es el calentamiento de hoy, en serio.</li>
+</ol>
+<p>Corré <code>python check.py</code> hasta <strong>24/24</strong> y después <code>python multiagente.py</code> para ver lo único que recibe el redactor. Guardá con <code>Ctrl+S</code> antes de cada corrida.</p>
+
+<h2>9 · Cierre (10 min)</h2>
+<ul class="tight">
+<li>Preguntas de cierre que te paso yo (de producción: “¿por qué?”, no de reconocimiento).</li>
+<li>Errores del quiz a <code>errores.md</code>.</li>
+<li>Commit: <code>Día 06: lección y lab de orquestación multi-agente, closes #2</code>.</li>
+</ul>
+
+<div class="callout"><span class="label">Para leer (fuente primaria)</span>
+<p><a href="https://code.claude.com/docs/en/agent-sdk/subagents">Subagents in the SDK</a>: es la forma real de lo que hiciste en el lab (15 min). Después, <a href="https://www.anthropic.com/engineering/multi-agent-research-system">How we built our multi-agent research system</a>: el escenario 3 del examen contado por quienes lo construyeron.</p></div>
+
+<div class="callout"><span class="label">Preguntá</span>
+<p>Si algo no cierra, preguntale a tu agente: es tu profe. Y si querés ver un subagente de verdad, pedímelo: puedo lanzar uno ahora mismo y te muestro qué le paso y qué me devuelve.</p></div>
+
+<footer class="lesson"><nav>
+<a href="../reference/multi-agente.html">Referencia: multi-agente</a>
+<a href="../reference/contexto.html">Ventana de contexto</a>
+<a href="../reference/agentic-loop.html">Agentic loop</a>
+<a href="../reference/glosario.html">Glosario</a>
+</nav></footer>
+</main>
+<script src="../assets/quiz.js"></script>
+</body></html>

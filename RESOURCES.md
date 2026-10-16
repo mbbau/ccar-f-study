@@ -27,6 +27,17 @@ Fuentes oficiales y verificables para preparar la certificación Claude Certifie
 - [Anthropic Cookbook (GitHub)](https://github.com/anthropics/anthropic-cookbook)
   Notebooks con ejemplos oficiales: agentes, tool use, sub-agents, RAG, multi-model. Use for: labs prácticos y patrones de referencia.
 
+### D1 (guía) · Multi-agente (Día 06)
+
+- [Docs: Subagents in the SDK](https://code.claude.com/docs/en/agent-sdk/subagents)
+  `AgentDefinition` (`description`, `prompt`, `tools`, `model`), aislamiento de contexto (solo pasa el prompt; solo vuelve el mensaje final), paralelo. La tool se llama `Agent` en `tool_use`. **Fuente primaria del Día 06.**
+- [Claude Code Docs: Create custom subagents](https://code.claude.com/docs/en/sub-agents)
+  Subagentes en `.claude/agents/*.md`; `Task` renombrada `Agent` en la v2.1.63 (alias); `tools` omitido hereda todas.
+- [Anthropic Engineering: How we built our multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system)
+  Orchestrator-worker real: Opus líder + Sonnet subagentes, ~15× tokens, escalar esfuerzo a la complejidad, qué necesita cada subagente, cuándo no conviene multi-agente.
+- [Docs: Models overview](https://platform.claude.com/docs/en/models/overview) · [Choosing a model](https://platform.claude.com/docs/en/about-claude/models/choosing-a-model)
+  Lineup actual (Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 5.5), latencia y uso; "orchestrator that delegates bulk work to lower-cost workers".
+
 ### D2 (guía) · Diseño de tools
 
 - [Docs: Define tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools)
